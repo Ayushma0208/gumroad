@@ -32,6 +32,14 @@ export const PRODUCT_TYPE_FILTERS = [
   { value: "ebook", label: "Ebooks & guides" },
 ] as const;
 
+export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+  kit: "Kit",
+  course: "Course",
+  pack: "Pack",
+  template: "Template",
+  ebook: "Ebook",
+};
+
 export type CatalogFilters = {
   q: string;
   category: string | null;

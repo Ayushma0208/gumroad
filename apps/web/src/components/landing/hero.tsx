@@ -30,7 +30,7 @@ export function LandingHero() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/signup?as=creator"
+                href="/become-a-creator"
                 className={cn(buttonVariants({ size: "xl" }), "rounded-xl")}
               >
                 Start selling

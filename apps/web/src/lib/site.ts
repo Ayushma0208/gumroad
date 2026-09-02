@@ -9,5 +9,4 @@ export const siteConfig = {
 export const navLinks = [
   { href: "/discover", label: "Discover" },
   { href: "/#categories", label: "Categories" },
-  { href: "/signup?as=creator", label: "Start selling" },
 ] as const;

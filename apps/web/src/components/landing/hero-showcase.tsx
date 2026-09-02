@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 import { featuredCreators, getFeaturedProducts } from "@/lib/mock/catalog";
+import { productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 
 const products = getFeaturedProducts().slice(0, 3);
@@ -80,7 +81,7 @@ function ShowcaseCard({
 }) {
   return (
     <Link
-      href={`/products/${product.slug}`}
+      href={productPath(product.slug)}
       className="group relative block overflow-hidden rounded-xl bg-muted"
     >
       <span className={cn("relative block", className)}>

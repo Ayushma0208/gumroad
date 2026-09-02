@@ -1,8 +1,17 @@
 "use client";
 
-import { LayoutDashboard, LogOut, ShoppingBag, Store } from "lucide-react";
+import {
+  LayoutDashboard,
+  Library,
+  LogOut,
+  Receipt,
+  Shield,
+  Store,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { UserAvatar } from "@/components/auth/user-avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,9 +22,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
-import { useAuthStore } from "@/stores/auth-store";
-import { isCreatorRole } from "@/types/auth";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth, useLogoutMutation } from "@/hooks/use-auth";
+import { isAdminRole, isCreatorRole, roleLabel } from "@/types/auth";
 import { cn } from "@/lib/utils";
 
 export function UserMenu({
@@ -24,13 +33,11 @@ export function UserMenu({
   triggerClassName?: string;
 }) {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const hasHydrated = useAuthHydrated();
-  const logout = useAuthStore((state) => state.logout);
-  const becomeCreator = useAuthStore((state) => state.becomeCreator);
+  const { user, isLoading } = useAuth();
+  const logout = useLogoutMutation();
 
-  if (!hasHydrated) {
-    return <div className="hidden h-8 w-24 md:block" />;
+  if (isLoading) {
+    return <Skeleton className="hidden h-8 w-24 md:block" />;
   }
 
   if (!user) {
@@ -59,24 +66,32 @@ export function UserMenu({
   }
 
   const creator = isCreatorRole(user.role);
+  const admin = isAdminRole(user.role);
+
+  async function onLogout() {
+    await logout.mutateAsync();
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
           buttonVariants({ variant: "ghost", size: "sm" }),
-          "hidden max-w-40 md:inline-flex",
+          "hidden max-w-48 gap-2 md:inline-flex",
           triggerClassName,
         )}
       >
+        <UserAvatar user={user} />
         <span className="truncate">{user.name}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-52">
+      <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>
           <DropdownMenuLabel>
             <span className="block truncate text-foreground">{user.name}</span>
             <span className="block truncate font-normal">
-              {creator ? "Seller" : "Customer"} · {user.email}
+              {roleLabel(user.role)} · {user.email}
             </span>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
@@ -85,22 +100,31 @@ export function UserMenu({
           {creator ? (
             <DropdownMenuItem onClick={() => router.push("/dashboard")}>
               <LayoutDashboard />
-              Seller dashboard
+              Dashboard
             </DropdownMenuItem>
           ) : (
-            <DropdownMenuItem
-              onClick={() => {
-                becomeCreator();
-                router.push("/dashboard");
-              }}
-            >
+            <DropdownMenuItem onClick={() => router.push("/become-a-creator")}>
               <Store />
-              Open a seller store
+              Start selling
             </DropdownMenuItem>
           )}
+          {admin ? (
+            <DropdownMenuItem onClick={() => router.push("/admin")}>
+              <Shield />
+              Admin
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onClick={() => router.push("/library")}>
-            <ShoppingBag />
-            Library
+            <Library />
+            My library
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/orders")}>
+            <Receipt />
+            Orders
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/profile")}>
+            <UserRound />
+            Profile
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
@@ -108,12 +132,11 @@ export function UserMenu({
           <DropdownMenuItem
             variant="destructive"
             onClick={() => {
-              logout();
-              router.push("/");
+              void onLogout();
             }}
           >
             <LogOut />
-            Sign out
+            Log out
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
@@ -123,12 +146,14 @@ export function UserMenu({
 
 export function MobileAuthLinks({ onNavigate }: { onNavigate: () => void }) {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const hasHydrated = useAuthHydrated();
-  const logout = useAuthStore((state) => state.logout);
-  const becomeCreator = useAuthStore((state) => state.becomeCreator);
+  const { user, isLoading } = useAuth();
+  const logout = useLogoutMutation();
 
-  if (!hasHydrated || !user) {
+  if (isLoading) {
+    return <Skeleton className="mt-6 h-10 w-full" />;
+  }
+
+  if (!user) {
     return (
       <>
         <Link
@@ -141,7 +166,7 @@ export function MobileAuthLinks({ onNavigate }: { onNavigate: () => void }) {
         <Link
           href="/signup"
           onClick={onNavigate}
-          className={cn(buttonVariants({ size: "xl" }), "mt-8 w-full")}
+          className={cn(buttonVariants({ size: "xl" }), "mt-6 w-full")}
         >
           Sign up
         </Link>
@@ -153,47 +178,63 @@ export function MobileAuthLinks({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <>
-      <p className="px-2 pt-4 text-sm text-muted-foreground">
-        {user.name} · {creator ? "Seller" : "Customer"}
-      </p>
+      <div className="mt-4 flex items-center gap-3 px-2">
+        <UserAvatar user={user} size="md" />
+        <div>
+          <p className="text-sm font-medium">{user.name}</p>
+          <p className="text-xs text-muted-foreground">{roleLabel(user.role)}</p>
+        </div>
+      </div>
       {creator ? (
         <Link
           href="/dashboard"
           onClick={onNavigate}
           className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
         >
-          Seller dashboard
+          Dashboard
         </Link>
       ) : (
-        <button
-          type="button"
-          className="rounded-lg px-2 py-3 text-left text-base text-foreground hover:bg-muted"
-          onClick={() => {
-            becomeCreator();
-            onNavigate();
-            router.push("/dashboard");
-          }}
+        <Link
+          href="/become-a-creator"
+          onClick={onNavigate}
+          className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
         >
-          Open a seller store
-        </button>
+          Start selling
+        </Link>
       )}
       <Link
         href="/library"
         onClick={onNavigate}
         className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
       >
-        Library
+        My library
+      </Link>
+      <Link
+        href="/orders"
+        onClick={onNavigate}
+        className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
+      >
+        Orders
+      </Link>
+      <Link
+        href="/profile"
+        onClick={onNavigate}
+        className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
+      >
+        Profile
       </Link>
       <Button
         variant="ghost"
         className="mt-4 justify-start"
         onClick={() => {
-          logout();
-          onNavigate();
-          router.push("/");
+          void logout.mutateAsync().then(() => {
+            onNavigate();
+            router.push("/");
+            router.refresh();
+          });
         }}
       >
-        Sign out
+        Log out
       </Button>
     </>
   );

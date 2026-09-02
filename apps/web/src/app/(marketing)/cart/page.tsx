@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { Container } from "@/components/layout/container";
 import { buttonVariants } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
+import { productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cart-store";
 
@@ -38,7 +39,7 @@ export default function CartPage() {
               <Image src={item.imageUrl} alt="" fill className="object-cover" />
             </span>
             <div className="flex flex-1 flex-col">
-              <Link href={`/products/${item.slug}`} className="font-medium">
+              <Link href={productPath(item.slug)} className="font-medium">
                 {item.title}
               </Link>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -60,7 +61,7 @@ export default function CartPage() {
         <p className="font-display text-2xl">{formatPrice(total)}</p>
       </div>
       <Link
-        href="/signup"
+        href="/checkout"
         className={cn(buttonVariants({ size: "xl" }), "mt-6 rounded-xl")}
       >
         Checkout

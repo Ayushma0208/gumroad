@@ -14,14 +14,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/hooks/use-auth";
 import { navLinks } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { selectCartCount, useCartStore } from "@/stores/cart-store";
+import { isCreatorRole } from "@/types/auth";
 
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const cartCount = useCartStore(selectCartCount);
+  const { user, isLoading } = useAuth();
+  const creator = user ? isCreatorRole(user.role) : false;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -52,6 +56,22 @@ export function SiteHeader() {
                 {link.label}
               </Link>
             ))}
+            {!isLoading && !creator ? (
+              <Link
+                href="/become-a-creator"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Start selling
+              </Link>
+            ) : null}
+            {creator ? (
+              <Link
+                href="/dashboard"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Dashboard
+              </Link>
+            ) : null}
           </nav>
         </div>
 
@@ -109,6 +129,15 @@ export function SiteHeader() {
                     {link.label}
                   </Link>
                 ))}
+                {!creator ? (
+                  <Link
+                    href="/become-a-creator"
+                    onClick={() => setOpen(false)}
+                    className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
+                  >
+                    Start selling
+                  </Link>
+                ) : null}
               </nav>
               <MobileAuthLinks onNavigate={() => setOpen(false)} />
             </SheetContent>

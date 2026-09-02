@@ -15,3 +15,11 @@ export function formatCompactNumber(value: number): string {
     maximumFractionDigits: 1,
   }).format(value);
 }
+
+export function formatDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(iso));
+}

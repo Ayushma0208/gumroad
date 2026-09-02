@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Container } from "@/components/layout/container";
+import { Suspense } from "react";
+import { AuthSwitchLink } from "@/components/auth/auth-switch-link";
+import { RedirectIfAuthed } from "@/components/auth/redirect-if-authed";
+import { AuthScreenSkeleton } from "@/components/auth/auth-screen-skeleton";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
@@ -9,30 +12,24 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <Container className="flex min-h-[70vh] items-center py-16">
-      <div className="mx-auto w-full max-w-md">
-        <p className="text-xs font-medium tracking-[0.18em] text-brand uppercase">
-          Account
-        </p>
-        <h1 className="mt-3 font-display text-4xl tracking-tight">Welcome back</h1>
-        <p className="mt-3 text-muted-foreground">
-          Sign in with the email you used to create a customer or seller account.
-        </p>
-        <LoginForm />
-        <p className="mt-6 text-sm text-muted-foreground">
+    <AuthShell
+      kicker="Account"
+      title="Welcome back."
+      description="Sign in to your library, orders, and — if you sell — your store."
+      footer={
+        <p className="text-sm text-muted-foreground">
           New here?{" "}
-          <Link href="/signup" className="text-foreground underline-offset-4 hover:underline">
-            Create a customer account
-          </Link>
-          {" · "}
-          <Link
-            href="/signup?as=creator"
-            className="text-foreground underline-offset-4 hover:underline"
-          >
-            Create a seller account
-          </Link>
+          <Suspense fallback="Create an account">
+            <AuthSwitchLink to="signup">Create an account</AuthSwitchLink>
+          </Suspense>
         </p>
-      </div>
-    </Container>
+      }
+    >
+      <Suspense fallback={<AuthScreenSkeleton />}>
+        <RedirectIfAuthed>
+          <LoginForm />
+        </RedirectIfAuthed>
+      </Suspense>
+    </AuthShell>
   );
 }

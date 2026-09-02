@@ -21,7 +21,7 @@ export function CreatorBenefits() {
               description="Built for people who already make things — not for people who want a side hustle dashboard."
             />
             <Link
-              href="/signup?as=creator"
+              href="/become-a-creator"
               className={cn(buttonVariants({ size: "lg" }), "w-fit rounded-xl")}
             >
               Start selling

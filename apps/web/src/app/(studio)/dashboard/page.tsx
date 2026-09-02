@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Container } from "@/components/layout/container";
 import { buttonVariants } from "@/components/ui/button";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 const stats = [
@@ -13,7 +13,7 @@ const stats = [
 ];
 
 export default function DashboardPage() {
-  const user = useAuthStore((state) => state.user);
+  const { user } = useAuth();
 
   return (
     <Container className="py-12 sm:py-16">
@@ -25,7 +25,7 @@ export default function DashboardPage() {
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
         This is your store workspace. Publish a product when you are ready —
-        the multi-step creator flow is the next build.
+        customers will find it on Discover and on your store page.
       </p>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-3">

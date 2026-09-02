@@ -2,45 +2,69 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
-import { useAuthStore } from "@/stores/auth-store";
-import { homeForRole, isCreatorRole } from "@/types/auth";
+import {
+  AuthAccessDenied,
+  AuthSessionError,
+} from "@/components/auth/auth-access-denied";
+import { AuthScreenSkeleton } from "@/components/auth/auth-screen-skeleton";
+import { useAuth } from "@/hooks/use-auth";
+import { loginPath } from "@/lib/auth/paths";
+import { isAdminRole, isCreatorRole } from "@/types/auth";
+
+type Gate = "user" | "creator" | "admin";
 
 export function RequireAuth({
   children,
-  creatorOnly = false,
+  gate = "user",
 }: {
   children: ReactNode;
-  creatorOnly?: boolean;
+  gate?: Gate;
 }) {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const hasHydrated = useAuthHydrated();
+  const { user, isLoading, isError, refetch } = useAuth();
 
   useEffect(() => {
-    if (!hasHydrated) return;
+    if (isLoading || isError) return;
     if (!user) {
-      router.replace(creatorOnly ? "/signup?as=creator" : "/login");
-      return;
+      const next =
+        typeof window === "undefined"
+          ? "/"
+          : `${window.location.pathname}${window.location.search}`;
+      router.replace(loginPath(next));
     }
-    if (creatorOnly && !isCreatorRole(user.role)) {
-      router.replace(homeForRole(user.role));
-    }
-  }, [creatorOnly, hasHydrated, router, user]);
+  }, [isError, isLoading, router, user]);
 
-  if (!hasHydrated) {
+  if (isLoading) {
+    return <AuthScreenSkeleton />;
+  }
+
+  if (isError) {
+    return <AuthSessionError onRetry={() => void refetch()} />;
+  }
+
+  if (!user) {
+    return <AuthScreenSkeleton />;
+  }
+
+  if (gate === "admin" && !isAdminRole(user.role)) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
-        Loading your workspace…
-      </div>
+      <AuthAccessDenied
+        title="This room is locked."
+        description="Admin tools are only available to Lumen operators."
+        actionHref="/"
+        actionLabel="Back to Lumen"
+      />
     );
   }
 
-  if (!user || (creatorOnly && !isCreatorRole(user.role))) {
+  if (gate === "creator" && !isCreatorRole(user.role)) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
-        Taking you to the right place…
-      </div>
+      <AuthAccessDenied
+        title="This is a creator workspace."
+        description="Open a store to publish products, see sales, and run your shop."
+        actionHref="/become-a-creator"
+        actionLabel="Become a creator"
+      />
     );
   }
 

@@ -8,6 +8,7 @@ import {
   featuredCreators,
   getFeaturedProductForCreator,
 } from "@/lib/mock/catalog";
+import { productPath } from "@/lib/paths";
 
 export function FeaturedCreators() {
   return (
@@ -53,7 +54,7 @@ export function FeaturedCreators() {
                   </Link>
                   {product ? (
                     <Link
-                      href={`/products/${product.slug}`}
+                      href={productPath(product.slug)}
                       className="relative min-h-44 sm:min-h-full"
                     >
                       <Image

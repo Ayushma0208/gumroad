@@ -55,8 +55,52 @@ export type Category = {
 export type FeaturedCreator = CreatorSummary & {
   coverUrl: string;
   bio: string;
+  storeName?: string;
   productCount: number;
   followerCount: number;
+};
+
+export type CreatorProfile = FeaturedCreator;
+
+export type IncludeIcon =
+  | "video"
+  | "layers"
+  | "code"
+  | "refresh"
+  | "users"
+  | "file"
+  | "book"
+  | "image"
+  | "audio"
+  | "sparkles"
+  | "layout"
+  | "download";
+
+export type IncludedItem = {
+  id: string;
+  label: string;
+  detail?: string;
+  icon: IncludeIcon;
+};
+
+export type ProductReview = {
+  id: string;
+  productId: string;
+  authorName: string;
+  authorAvatarUrl: string;
+  rating: number;
+  body: string;
+  createdAt: string;
+};
+
+export type ProductDetail = Product & {
+  images: string[];
+  highlights: string[];
+  audience: string[];
+  outcomes: string[];
+  includedItems: IncludedItem[];
+  paragraphs: string[];
+  reviews: ProductReview[];
 };
 
 export type Testimonial = {

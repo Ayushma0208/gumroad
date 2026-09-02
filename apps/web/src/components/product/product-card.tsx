@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCompactNumber, formatPrice } from "@/lib/format";
+import { productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import type { Product, ProductCardLayout } from "@/types/catalog";
 
@@ -86,7 +87,7 @@ export function ProductCard({
     return (
       <article className={cn("group h-full", className)}>
         <Link
-          href={`/products/${product.slug}`}
+          href={productPath(product.slug)}
           className="relative flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl sm:min-h-[28rem]"
         >
           <Image
@@ -125,7 +126,7 @@ export function ProductCard({
     return (
       <article className={cn("group min-w-0", className)}>
         <Link
-          href={`/products/${product.slug}`}
+          href={productPath(product.slug)}
           className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)]"
         >
           <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted">
@@ -158,7 +159,7 @@ export function ProductCard({
 
   return (
     <article className={cn("group h-full", className)}>
-      <Link href={`/products/${product.slug}`} className="flex h-full flex-col">
+      <Link href={productPath(product.slug)} className="flex h-full flex-col">
         <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-muted">
           <Image
             src={product.imageUrl}

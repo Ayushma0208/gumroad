@@ -21,7 +21,7 @@ export function FinalCta() {
             delivery, payouts, and a quieter inbox.
           </p>
           <Link
-            href="/signup?as=creator"
+            href="/become-a-creator"
             className={cn(
               buttonVariants({ size: "xl" }),
               "mt-6 rounded-xl bg-background text-foreground hover:bg-background/90",

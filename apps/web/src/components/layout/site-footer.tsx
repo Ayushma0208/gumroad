@@ -17,7 +17,7 @@ const footerColumns = [
   {
     title: "Creators",
     links: [
-      { href: "/signup?as=creator", label: "Start selling" },
+      { href: "/become-a-creator", label: "Start selling" },
       { href: "/#how-it-works", label: "How it works" },
       { href: "/#creators", label: "Why Lumen" },
       { href: "/dashboard", label: "Dashboard" },
@@ -35,8 +35,8 @@ const footerColumns = [
   {
     title: "Legal",
     links: [
-      { href: "/login", label: "Privacy" },
-      { href: "/login", label: "Terms" },
+      { href: "/privacy", label: "Privacy" },
+      { href: "/terms", label: "Terms" },
       { href: "/login", label: "Cookies" },
       { href: "/login", label: "Licenses" },
     ],

@@ -10,6 +10,7 @@ const studioLinks = [
   { href: "/dashboard/products", label: "Products" },
   { href: "/dashboard/sales", label: "Sales" },
   { href: "/dashboard/analytics", label: "Analytics" },
+  { href: "/dashboard/settings", label: "Settings" },
 ];
 
 export default function StudioLayout({
@@ -18,7 +19,7 @@ export default function StudioLayout({
   children: React.ReactNode;
 }) {
   return (
-    <RequireAuth creatorOnly>
+    <RequireAuth gate="creator">
       <div className="flex min-h-full flex-1 flex-col">
         <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between gap-4 px-5 sm:px-8">
