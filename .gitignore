@@ -1,0 +1,37 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# next
+.next
+out
+.turbo
+
+# env
+.env
+.env*.local
+!.env.example
+
+# logs
+npm-debug.log*
+pnpm-debug.log*
+*.log
+
+# os
+.DS_Store
+Thumbs.db
+
+# ide
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# prisma
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+# uploads / generated
+dist
+coverage
+.cache
+*.tsbuildinfo
