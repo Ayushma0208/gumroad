@@ -54,7 +54,7 @@ export function LandingCategories() {
                 <Link
                   href={`/discover?category=${category.slug}`}
                   className={cn(
-                    "group relative flex min-h-[11rem] flex-col justify-between overflow-hidden rounded-xl border border-border p-4 sm:min-h-[13.5rem] sm:p-5",
+                    "group relative flex min-h-[11rem] flex-col justify-between overflow-hidden rounded-xl border border-border p-4 transition-colors duration-200 hover:border-foreground/25 sm:min-h-[13.5rem] sm:p-5",
                     photo ? "text-white" : "bg-background",
                   )}
                 >

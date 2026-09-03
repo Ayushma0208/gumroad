@@ -160,7 +160,7 @@ export function ProductCard({
   return (
     <article className={cn("group h-full", className)}>
       <Link href={productPath(product.slug)} className="flex h-full flex-col">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-muted">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-transparent bg-muted transition-colors duration-200 group-hover:border-border">
           <Image
             src={product.imageUrl}
             alt={product.title}

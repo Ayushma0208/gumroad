@@ -31,7 +31,10 @@ export function LandingHero() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/become-a-creator"
-                className={cn(buttonVariants({ size: "xl" }), "rounded-xl")}
+                className={cn(
+                  buttonVariants({ size: "xl" }),
+                  "rounded-xl transition-transform duration-200 active:scale-[0.98]",
+                )}
               >
                 Start selling
                 <ArrowRight />

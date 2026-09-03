@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SearchX } from "lucide-react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { CheckoutExperience } from "@/components/checkout/checkout-experience";
 import { productToCheckoutLine } from "@/lib/api/checkout";
@@ -19,7 +20,8 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   if (slug && !product) {
     return (
       <EmptyState
-        title="This product is not on the shelf."
+        icon={SearchX}
+        title="This product is not on the shelf"
         description="The checkout link is missing a product we can sell. Head back to Discover and pick something else."
         actionHref="/discover"
         actionLabel="Back to Discover"

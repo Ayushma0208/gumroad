@@ -1,6 +1,8 @@
 "use client";
 
 import { Container } from "@/components/layout/container";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function DashboardSettingsPage() {
@@ -8,24 +10,31 @@ export default function DashboardSettingsPage() {
   const store = user?.creatorProfile;
 
   return (
-    <Container className="py-12 sm:py-16">
-      <p className="text-xs font-medium tracking-[0.18em] text-brand uppercase">
-        Store
-      </p>
-      <h1 className="mt-3 font-display text-4xl tracking-tight">Settings</h1>
-      <p className="mt-3 max-w-xl text-muted-foreground">
-        Payouts, notifications, and public store details will be editable here.
-        For now this is a read-only snapshot of what you set up.
-      </p>
+    <Container className="py-8 sm:py-12">
+      <PageHeader
+        eyebrow="Store"
+        title="Settings"
+        description="Payouts, notifications, and public store details will be editable here. For now this is a read-only snapshot of what you set up."
+      />
 
       {store ? (
-        <dl className="mt-10 max-w-lg space-y-4 rounded-2xl border border-border bg-card p-6 text-sm">
-          <Row label="Display name" value={store.displayName} />
-          <Row label="Store name" value={store.storeName} />
-          <Row label="URL" value={`lumen.app/${store.slug}`} />
-          <Row label="Category" value={store.category} />
-          <Row label="Bio" value={store.bio} />
-        </dl>
+        <Card className="mt-8 max-w-xl">
+          <CardHeader>
+            <CardTitle>Public store</CardTitle>
+            <CardDescription>
+              How buyers see you on Lumen. Editing lands here next.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-4 text-sm">
+              <Row label="Display name" value={store.displayName} />
+              <Row label="Store name" value={store.storeName} />
+              <Row label="URL" value={`lumen.app/${store.slug}`} mono />
+              <Row label="Category" value={store.category} />
+              <Row label="Bio" value={store.bio} />
+            </dl>
+          </CardContent>
+        </Card>
       ) : (
         <p className="mt-10 text-sm text-muted-foreground">
           No store profile on this account yet.
@@ -35,11 +44,19 @@ export default function DashboardSettingsPage() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="border-b border-border pb-4 last:border-0 last:pb-0">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="mt-1">{value}</dd>
+      <dd className={mono ? "mt-1 font-mono text-xs" : "mt-1"}>{value}</dd>
     </div>
   );
 }

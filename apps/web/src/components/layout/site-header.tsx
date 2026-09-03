@@ -2,7 +2,8 @@
 
 import { Menu, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MobileAuthLinks, UserMenu } from "@/components/layout/user-menu";
@@ -23,6 +24,7 @@ import { isCreatorRole } from "@/types/auth";
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
   const cartCount = useCartStore(selectCartCount);
   const { user, isLoading } = useAuth();
   const creator = user ? isCreatorRole(user.role) : false;
@@ -48,29 +50,26 @@ export function SiteHeader() {
           <Logo />
           <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary">
             {navLinks.map((link) => (
-              <Link
+              <NavLink
                 key={link.href}
                 href={link.href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                active={isNavActive(pathname, link.href)}
               >
                 {link.label}
-              </Link>
+              </NavLink>
             ))}
             {!isLoading && !creator ? (
-              <Link
+              <NavLink
                 href="/become-a-creator"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                active={pathname.startsWith("/become-a-creator")}
               >
                 Start selling
-              </Link>
+              </NavLink>
             ) : null}
             {creator ? (
-              <Link
-                href="/dashboard"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
+              <NavLink href="/dashboard" active={pathname.startsWith("/dashboard")}>
                 Dashboard
-              </Link>
+              </NavLink>
             ) : null}
           </nav>
         </div>
@@ -124,7 +123,15 @@ export function SiteHeader() {
                     key={link.href}
                     href={link.href}
                     onClick={() => setOpen(false)}
-                    className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
+                    aria-current={
+                      isNavActive(pathname, link.href) ? "page" : undefined
+                    }
+                    className={cn(
+                      "rounded-lg px-2 py-3 text-base hover:bg-muted",
+                      isNavActive(pathname, link.href)
+                        ? "bg-muted font-medium text-foreground"
+                        : "text-foreground",
+                    )}
                   >
                     {link.label}
                   </Link>
@@ -145,5 +152,35 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
+  );
+}
+
+function isNavActive(pathname: string, href: string) {
+  if (href.startsWith("/#") || href === "/") return false;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function NavLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "text-sm transition-colors duration-200",
+        active
+          ? "font-medium text-foreground"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </Link>
   );
 }
