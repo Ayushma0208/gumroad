@@ -5,18 +5,20 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DiscoverActiveFilters, DiscoverFilters } from "@/components/discover/discover-filters";
 import { DiscoverCategories } from "@/components/discover/discover-categories";
 import { DiscoverEmpty } from "@/components/discover/discover-empty";
+import { DiscoverError } from "@/components/discover/discover-error";
 import { DiscoverFeatured } from "@/components/discover/discover-featured";
+import { DiscoverPagination } from "@/components/discover/discover-pagination";
 import { DiscoverSearch } from "@/components/discover/discover-search";
 import { Container } from "@/components/layout/container";
 import { FadeInOnLoad } from "@/components/motion/fade-in";
-import { ProductCard } from "@/components/product/product-card";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { ProductCard, ProductCardSkeleton } from "@/components/product/product-card";
 import {
-  getCategories,
-  getCategoryBySlug,
-  getSpotlight,
-  searchCatalog,
-} from "@/lib/api/products";
+  useCatalogCategories,
+  useCatalogProducts,
+  useFeaturedCatalog,
+} from "@/hooks/use-catalog";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { getCategoryBySlugFromList, getSpotlightFromProducts } from "@/lib/api/products";
 import {
   catalogFiltersToQueryString,
   DEFAULT_CATALOG_FILTERS,
@@ -51,7 +53,11 @@ export function DiscoverExperience() {
 
   const patchFilters = useCallback(
     (patch: Partial<CatalogFilters>) => {
-      replaceFilters({ ...filters, ...patch });
+      replaceFilters({
+        ...filters,
+        ...patch,
+        page: patch.page ?? 1,
+      });
     },
     [filters, replaceFilters],
   );
@@ -59,7 +65,7 @@ export function DiscoverExperience() {
   useEffect(() => {
     if (debouncedQuery === filters.q) return;
     lastPushedQuery.current = debouncedQuery;
-    replaceFilters({ ...filters, q: debouncedQuery });
+    replaceFilters({ ...filters, q: debouncedQuery, page: 1 });
   }, [debouncedQuery, filters, replaceFilters]);
 
   useEffect(() => {
@@ -68,11 +74,22 @@ export function DiscoverExperience() {
     setDraftQuery(filters.q);
   }, [filters.q]);
 
-  const categories = getCategories();
-  const activeCategory = getCategoryBySlug(filters.category);
-  const results = searchCatalog({ ...filters, q: debouncedQuery });
-  const showSpotlight = !hasActiveBrowseFilters({ ...filters, q: debouncedQuery });
-  const spotlight = showSpotlight ? getSpotlight(filters.category) : null;
+  const queryFilters = { ...filters, q: debouncedQuery };
+  const categoriesQuery = useCatalogCategories();
+  const featuredQuery = useFeaturedCatalog();
+  const productsQuery = useCatalogProducts(queryFilters);
+
+  const categories = categoriesQuery.data ?? [];
+  const activeCategory = getCategoryBySlugFromList(categories, filters.category);
+  const results = productsQuery.data?.items ?? [];
+  const pagination = productsQuery.data?.pagination;
+  const showSpotlight = !hasActiveBrowseFilters(queryFilters);
+  const spotlight = showSpotlight
+    ? getSpotlightFromProducts(
+        featuredQuery.data?.length ? featuredQuery.data : results,
+        filters.category,
+      )
+    : null;
   const heading = getDiscoverHeading(
     { ...filters, q: debouncedQuery.trim() },
     activeCategory?.label ?? null,
@@ -96,7 +113,7 @@ export function DiscoverExperience() {
   const applySuggestion = (value: string) => {
     lastPushedQuery.current = value;
     setDraftQuery(value);
-    patchFilters({ q: value });
+    patchFilters({ q: value, page: 1 });
   };
 
   const emptyKind = results.length
@@ -109,9 +126,13 @@ export function DiscoverExperience() {
           ? "category"
           : "filters";
 
-  const countLabel = `${results.length.toLocaleString("en-US")} ${
-    results.length === 1 ? "product" : "products"
+  const total = pagination?.total ?? results.length;
+  const countLabel = `${total.toLocaleString("en-US")} ${
+    total === 1 ? "product" : "products"
   }`;
+  const catalogError =
+    categoriesQuery.error ?? featuredQuery.error ?? productsQuery.error;
+  const showGridSkeleton = productsQuery.isPending && !productsQuery.data;
 
   return (
     <div className="pb-20 sm:pb-28">
@@ -137,7 +158,7 @@ export function DiscoverExperience() {
               onClear={() => {
                 lastPushedQuery.current = "";
                 setDraftQuery("");
-                patchFilters({ q: "" });
+                patchFilters({ q: "", page: 1 });
               }}
             />
           </div>
@@ -157,7 +178,7 @@ export function DiscoverExperience() {
         <DiscoverCategories
           categories={categories}
           activeSlug={filters.category}
-          onSelect={(slug) => patchFilters({ category: slug })}
+          onSelect={(slug) => patchFilters({ category: slug, page: 1 })}
         />
 
         <div className="mt-10 flex flex-col gap-4 sm:mt-12 sm:flex-row sm:items-end sm:justify-between">
@@ -182,7 +203,24 @@ export function DiscoverExperience() {
           />
         </div>
 
-        {emptyKind ? (
+        {catalogError ? (
+          <DiscoverError
+            message={
+              catalogError instanceof Error ? catalogError.message : undefined
+            }
+            onRetry={() => {
+              void categoriesQuery.refetch();
+              void featuredQuery.refetch();
+              void productsQuery.refetch();
+            }}
+          />
+        ) : showGridSkeleton ? (
+          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:mt-10 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-12">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))}
+          </div>
+        ) : emptyKind && results.length === 0 ? (
           <DiscoverEmpty
             kind={emptyKind}
             query={draftQuery || filters.q}
@@ -191,11 +229,19 @@ export function DiscoverExperience() {
             onSuggestion={applySuggestion}
           />
         ) : (
-          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:mt-10 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-12">
-            {results.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:mt-10 lg:grid-cols-3 lg:gap-x-6 lg:gap-y-12">
+              {results.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+            {pagination ? (
+              <DiscoverPagination
+                pagination={pagination}
+                onPage={(page) => patchFilters({ page })}
+              />
+            ) : null}
+          </>
         )}
       </Container>
     </div>

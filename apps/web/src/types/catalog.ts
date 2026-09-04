@@ -44,12 +44,22 @@ export type CategoryIcon =
   | "productivity";
 
 export type Category = {
+  id?: string;
   slug: string;
   label: string;
   description: string;
   imageUrl: string;
   productCount: number;
   icon: CategoryIcon;
+};
+
+export type PaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 };
 
 export type FeaturedCreator = CreatorSummary & {

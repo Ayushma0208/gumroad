@@ -130,7 +130,12 @@ model Product {
   @@index([categoryId])
   @@index([slug])
   @@index([status])
+  @@index([productType])
+  @@index([price])
   @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([status, categoryId])
+  @@index([status, featured])
 }
 
 model ProductImage {

@@ -14,7 +14,7 @@ import {
   ProductPriceNote,
   ProductReviews,
 } from "@/components/product/product-sections";
-import { getCreatorProfile } from "@/lib/api/creators";
+import { getCreatorProfile, profileFromSummary } from "@/lib/api/creators";
 import {
   getProductBySlug,
   listProductSlugs,
@@ -26,9 +26,15 @@ type ProductPageProps = {
   params: Promise<{ slug: string }>;
 };
 
+export const dynamic = "force-dynamic";
+
 export async function generateStaticParams() {
-  const slugs = await listProductSlugs();
-  return slugs.map((slug) => ({ slug }));
+  try {
+    const slugs = await listProductSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -48,10 +54,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [related, creator] = await Promise.all([
+  const [related, creatorProfile] = await Promise.all([
     listRelatedProducts(product),
     getCreatorProfile(product.creator.slug),
   ]);
+  const creator =
+    creatorProfile ?? profileFromSummary(product.creator, related.length + 1);
 
   return (
     <>

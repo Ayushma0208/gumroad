@@ -1,15 +1,49 @@
 import { Router } from "express";
-import { requireAuth } from "../../middleware/auth.middleware";
+import { optionalAuth, requireAuth } from "../../middleware/auth.middleware";
 import { requireRole } from "../../middleware/role.middleware";
-import { validateBody } from "../../middleware/validation.middleware";
+import {
+  validateBody,
+  validateQuery,
+} from "../../middleware/validation.middleware";
 import { asyncHandler } from "../../utils/async-handler";
-import { create, getBySlug, list, update } from "./product.controller";
-import { createProductSchema, updateProductSchema } from "./product.schema";
+import {
+  archive,
+  create,
+  featured,
+  getById,
+  getBySlug,
+  list,
+  mine,
+  publish,
+  related,
+  remove,
+  trending,
+  update,
+} from "./product.controller";
+import {
+  createProductSchema,
+  listProductsQuerySchema,
+  myProductsQuerySchema,
+  paginationQuerySchema,
+  updateProductSchema,
+} from "./product.validation";
 
 export const productRouter = Router();
 
-productRouter.get("/", asyncHandler(list));
-productRouter.get("/:slug", asyncHandler(getBySlug));
+productRouter.get("/", validateQuery(listProductsQuerySchema), asyncHandler(list));
+productRouter.get("/featured", validateQuery(paginationQuerySchema), asyncHandler(featured));
+productRouter.get("/trending", validateQuery(paginationQuerySchema), asyncHandler(trending));
+productRouter.get(
+  "/my",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  validateQuery(myProductsQuerySchema),
+  asyncHandler(mine),
+);
+productRouter.get("/slug/:slug", asyncHandler(getBySlug));
+productRouter.get("/:id/related", asyncHandler(related));
+productRouter.get("/:id", optionalAuth, asyncHandler(getById));
+
 productRouter.post(
   "/",
   requireAuth,
@@ -23,4 +57,22 @@ productRouter.patch(
   requireRole("CREATOR", "ADMIN"),
   validateBody(updateProductSchema),
   asyncHandler(update),
+);
+productRouter.delete(
+  "/:id",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  asyncHandler(remove),
+);
+productRouter.post(
+  "/:id/publish",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  asyncHandler(publish),
+);
+productRouter.post(
+  "/:id/archive",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  asyncHandler(archive),
 );

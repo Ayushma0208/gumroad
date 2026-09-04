@@ -24,11 +24,12 @@ import { Textarea } from "@/components/studio/textarea";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
+import { useCatalogCategories } from "@/hooks/use-catalog";
 import {
   useProductStatusMutation,
   useSaveProductMutation,
 } from "@/hooks/use-studio";
-import { categories } from "@/lib/mock/catalog";
+import { categories as mockCategories } from "@/lib/mock/catalog";
 import { formatPrice } from "@/lib/format";
 import { pricingCopy, productKindCopy } from "@/lib/studio/copy";
 import {
@@ -95,6 +96,8 @@ export function ProductEditor({
   const userId = user?.id ?? "";
   const save = useSaveProductMutation(userId);
   const statusMut = useProductStatusMutation(userId);
+  const categoriesQuery = useCatalogCategories();
+  const categoryOptions = categoriesQuery.data ?? mockCategories;
   const showToast = useToastStore((state) => state.show);
   const [step, setStep] = useState(0);
 
@@ -202,10 +205,14 @@ export function ProductEditor({
         noValidate
       >
         {step === 0 ? <TypeStep form={form} /> : null}
-        {step === 1 ? <DetailsStep form={form} /> : null}
+        {step === 1 ? (
+          <DetailsStep form={form} categories={categoryOptions} />
+        ) : null}
         {step === 2 ? <MediaStep form={form} /> : null}
         {step === 3 ? <PricingStep form={form} /> : null}
-        {step === 4 ? <ReviewStep values={form.getValues()} /> : null}
+        {step === 4 ? (
+          <ReviewStep values={form.getValues()} categories={categoryOptions} />
+        ) : null}
 
         <div className="mt-10 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Button
@@ -330,8 +337,10 @@ function TypeStep({
 
 function DetailsStep({
   form,
+  categories,
 }: {
   form: ReturnType<typeof useForm<ProductDraftValues>>;
+  categories: { slug: string; label: string }[];
 }) {
   const errors = form.formState.errors;
   return (
@@ -543,7 +552,13 @@ function PricingStep({
   );
 }
 
-function ReviewStep({ values }: { values: ProductDraftValues }) {
+function ReviewStep({
+  values,
+  categories,
+}: {
+  values: ProductDraftValues;
+  categories: { slug: string; label: string }[];
+}) {
   const category = categories.find((item) => item.slug === values.categorySlug);
   const priceLabel = useMemo(() => {
     if (values.pricingModel === "free") return "Free";

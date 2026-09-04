@@ -1,24 +1,17 @@
 import type { Category, CreatorProfile, Product, User } from "@prisma/client";
 
-export type ProductWithRelations = Product & {
+export type ProductRecord = Product & {
   category: Category;
   creator: CreatorProfile & { user: Pick<User, "id" | "name" | "avatarUrl"> };
   images: { url: string; sortOrder: number }[];
-  files: { id: string; fileName: string; fileSize: number; mimeType: string }[];
-  _count: { reviews: true } | { reviews: number };
-  reviews?: { rating: number }[];
+  files?: { id: string; fileName: string; fileSize: number; mimeType: string }[];
+  reviews: { rating: number }[];
+  _count?: { orderItems?: number };
 };
 
 export function serializeProduct(
-  product: Product & {
-    category: Category;
-    creator: CreatorProfile & { user: Pick<User, "id" | "name" | "avatarUrl"> };
-    images: { url: string; sortOrder: number }[];
-    files?: { id: string; fileName: string; fileSize: number; mimeType: string }[];
-    reviews: { rating: number }[];
-    _count?: { orderItems?: number };
-  },
-  options: { includeFiles?: boolean } = {},
+  product: ProductRecord,
+  options: { includeFiles?: boolean; includeStatus?: boolean } = {},
 ) {
   const ratings = product.reviews.map((review) => review.rating);
   const rating =
@@ -29,31 +22,36 @@ export function serializeProduct(
 
   return {
     id: product.id,
-    slug: product.slug,
     title: product.title,
+    slug: product.slug,
     shortDescription: product.shortDescription,
     description: product.description,
+    price: Number((product.price / 100).toFixed(2)),
     priceCents: product.price,
     currency: product.currency,
     productType: product.productType,
-    status: product.status,
     coverImage: product.coverImage,
+    isFeatured: product.featured,
     featured: product.featured,
     trending: product.trending,
     editorsPick: product.editorsPick,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
-    category: {
-      id: product.category.id,
-      slug: product.category.slug,
-      label: product.category.label,
-    },
+    ...(options.includeStatus ? { status: product.status } : {}),
     creator: {
       id: product.creator.id,
-      name: product.creator.displayName,
+      storeName: product.creator.storeName,
       slug: product.creator.slug,
+      avatar: product.creator.avatar ?? product.creator.user.avatarUrl ?? "",
+      name: product.creator.displayName,
       avatarUrl: product.creator.avatar ?? product.creator.user.avatarUrl ?? "",
       headline: product.creator.bio,
+    },
+    category: {
+      id: product.category.id,
+      name: product.category.label,
+      slug: product.category.slug,
+      label: product.category.label,
     },
     images: product.images
       .slice()
@@ -72,3 +70,5 @@ export function serializeProduct(
       : undefined,
   };
 }
+
+export type MarketplaceProduct = ReturnType<typeof serializeProduct>;

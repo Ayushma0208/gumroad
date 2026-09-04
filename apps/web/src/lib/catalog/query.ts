@@ -47,6 +47,7 @@ export type CatalogFilters = {
   price: PriceFilter | null;
   rating: RatingFilter | null;
   type: ProductType | null;
+  page: number;
 };
 
 export const DEFAULT_CATALOG_FILTERS: CatalogFilters = {
@@ -56,6 +57,7 @@ export const DEFAULT_CATALOG_FILTERS: CatalogFilters = {
   price: null,
   rating: null,
   type: null,
+  page: 1,
 };
 
 export const SEARCH_SUGGESTIONS = [
@@ -89,26 +91,30 @@ export function parseCatalogFilters(
   const priceParam = params.get("price");
   const ratingParam = params.get("rating");
   const typeParam = params.get("type");
+  const search = params.get("search")?.trim() || params.get("q")?.trim() || "";
+  const pageValue = Number(params.get("page") ?? "1");
 
   return {
-    q: params.get("q")?.trim() ?? "",
+    q: search,
     category: params.get("category")?.trim() || null,
     sort: isSortKey(sortParam) ? sortParam : "popular",
     price: isPriceFilter(priceParam) ? priceParam : null,
     rating: isRatingFilter(ratingParam) ? ratingParam : null,
     type: isProductType(typeParam) ? typeParam : null,
+    page: Number.isInteger(pageValue) && pageValue > 0 ? pageValue : 1,
   };
 }
 
 export function catalogFiltersToQueryString(filters: CatalogFilters): string {
   const params = new URLSearchParams();
   const query = filters.q.trim();
-  if (query) params.set("q", query);
+  if (query) params.set("search", query);
   if (filters.category) params.set("category", filters.category);
   if (filters.sort !== "popular") params.set("sort", filters.sort);
   if (filters.price) params.set("price", filters.price);
   if (filters.rating) params.set("rating", filters.rating);
   if (filters.type) params.set("type", filters.type);
+  if (filters.page > 1) params.set("page", String(filters.page));
   return params.toString();
 }
 

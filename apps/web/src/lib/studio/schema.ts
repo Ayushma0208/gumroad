@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { categories } from "@/lib/mock/catalog";
 
 const kindSchema = z.enum(["download", "course", "template", "bundle"]);
 const pricingSchema = z.enum(["free", "fixed", "pwyw"]);
@@ -18,12 +17,7 @@ export const productDraftSchema = z
       .string()
       .trim()
       .min(40, "Add a fuller description — at least 40 characters."),
-    categorySlug: z
-      .string()
-      .min(1, "Pick a category.")
-      .refine((slug) => categories.some((category) => category.slug === slug), {
-        message: "Pick a category from the list.",
-      }),
+    categorySlug: z.string().min(1, "Pick a category."),
     coverUrl: z.string().min(1, "Add a cover image."),
     gallery: z.array(z.string()),
     files: z.array(

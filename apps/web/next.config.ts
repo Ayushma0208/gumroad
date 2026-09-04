@@ -17,20 +17,19 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    if (useRemoteApi) {
-      return [
-        {
-          source: "/api/v1/:path*",
-          destination: `${apiProxyTarget}/api/v1/:path*`,
-        },
-      ];
-    }
-    return [
+    const rewrites = [
       {
-        source: "/auth/:path*",
-        destination: "/api/auth/:path*",
+        source: "/api/v1/:path*",
+        destination: `${apiProxyTarget}/api/v1/:path*`,
       },
     ];
+    if (!useRemoteApi) {
+      rewrites.push({
+        source: "/auth/:path*",
+        destination: "/api/auth/:path*",
+      });
+    }
+    return rewrites;
   },
 };
 

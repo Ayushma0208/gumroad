@@ -35,6 +35,7 @@ async function main() {
       ["music", "Music", "Sample packs, scores, and sound design.", "photo-1511379938547-c1f69419868d", "music"],
       ["writing", "Writing", "Ebooks, newsletters, and paid essays.", "photo-1455390582262-044cdead277a", "writing"],
       ["productivity", "Productivity", "Operating systems for a quieter week.", "photo-1484480974693-6ca0a78fb36b", "productivity"],
+      ["marketing", "Marketing", "Positioning, launch kits, and campaign systems.", "photo-1460925895917-afdab827c52f", "business"],
     ].map(([slug, label, description, photo, icon], index) =>
       prisma.category.create({
         data: {
@@ -150,9 +151,31 @@ async function main() {
     include: { creatorProfile: true },
   });
 
+  const ashaUser = await prisma.user.create({
+    data: {
+      name: "Asha Raman",
+      email: "asha@example.com",
+      passwordHash,
+      role: Role.CREATOR,
+      avatarUrl: img("photo-1531123897727-8f129e1688ce", 200),
+      creatorProfile: {
+        create: {
+          displayName: "Asha Raman",
+          storeName: "Raman Field Notes",
+          slug: "asha",
+          bio: "Launch systems and sample libraries for independent studios.",
+          category: "marketing",
+          avatar: img("photo-1531123897727-8f129e1688ce", 200),
+        },
+      },
+    },
+    include: { creatorProfile: true },
+  });
+
   const mira = miraUser.creatorProfile!;
   const kenji = kenjiUser.creatorProfile!;
   const julian = julianUser.creatorProfile!;
+  const asha = ashaUser.creatorProfile!;
 
   type SeedProduct = {
     creatorId: string;
@@ -382,6 +405,100 @@ async function main() {
       type: ProductType.BUNDLE,
       cover: "photo-1454165804606-c3d57bc86b40",
     },
+    {
+      creatorId: asha.id,
+      category: "marketing",
+      slug: "campaign-narrative-system",
+      title: "Campaign Narrative System",
+      shortDescription: "A positioning kit for launches that need a spine.",
+      description:
+        "Offer architecture, landing-page outlines, and the email sequence used on three paid drops.",
+      price: 6400,
+      type: ProductType.TEMPLATE,
+      cover: "photo-1460925895917-afdab827c52f",
+      featured: true,
+      trending: true,
+    },
+    {
+      creatorId: asha.id,
+      category: "marketing",
+      slug: "quiet-launch-calendar",
+      title: "Quiet Launch Calendar",
+      shortDescription: "Six weeks of shipping without a splash page panic.",
+      description: "A calendar, checklists, and the copy blocks that actually get sent.",
+      price: 2800,
+      type: ProductType.TEMPLATE,
+      cover: "photo-1484480974693-6ca0a78fb36b",
+    },
+    {
+      creatorId: asha.id,
+      category: "music",
+      slug: "dusk-sample-library",
+      title: "Dusk Sample Library",
+      shortDescription: "Tape-worn loops and room tone from a Goa evening.",
+      description: "Forty-eight loops, dry drums, and the field recordings behind them.",
+      price: 3200,
+      type: ProductType.DIGITAL_DOWNLOAD,
+      cover: "photo-1511379938547-c1f69419868d",
+      trending: true,
+    },
+    {
+      creatorId: asha.id,
+      category: "writing",
+      slug: "field-notes-on-selling",
+      title: "Field Notes on Selling",
+      shortDescription: "Essays for people who dislike funnels.",
+      description: "Twelve letters on pricing, taste, and the email you send after a no.",
+      price: 1800,
+      type: ProductType.DIGITAL_DOWNLOAD,
+      cover: "photo-1455390582262-044cdead277a",
+    },
+    {
+      creatorId: julian.id,
+      category: "photography",
+      slug: "film-grain-pack",
+      title: "Film Grain Pack",
+      shortDescription: "Scanned grain overlays from leftover rolls.",
+      description: "Sixteen overlays, sized for stills and a 4K timeline.",
+      price: 2200,
+      type: ProductType.DIGITAL_DOWNLOAD,
+      cover: "photo-1490481651871-ab68de25d43d",
+    },
+    {
+      creatorId: kenji.id,
+      category: "development",
+      slug: "react-patterns-field-notes",
+      title: "React Patterns Field Notes",
+      shortDescription: "The patterns that survived production, not Twitter.",
+      description: "Server components, forms, and the cache bugs that taught us manners.",
+      price: 4700,
+      type: ProductType.COURSE,
+      cover: "photo-1633356122544-f134324a6cee",
+      editorsPick: true,
+    },
+    {
+      creatorId: mira.id,
+      category: "productivity",
+      slug: "studio-week-os",
+      title: "Studio Week OS",
+      shortDescription: "A Notion system that does not feel like homework.",
+      description: "Capacity, shipping, and the Friday review that actually happens.",
+      price: 2100,
+      type: ProductType.TEMPLATE,
+      cover: "photo-1484480974693-6ca0a78fb36b",
+    },
+    {
+      creatorId: mira.id,
+      category: "education",
+      slug: "type-critique-atelier",
+      title: "Type Critique Atelier",
+      shortDescription: "A recorded workshop on pairing and optical size.",
+      description: "Four sessions from the Northline desk, with the homework files included.",
+      price: 9900,
+      type: ProductType.COURSE,
+      cover: "photo-1523580494863-6f3031224c94",
+      featured: true,
+    },
   ];
 
   const products = [];
@@ -424,7 +541,28 @@ async function main() {
 
   const northline = products.find((product) => product.slug === "northline-ui-system");
   const atlas = products.find((product) => product.slug === "atlas-next-starter");
-  if (!northline || !atlas) throw new Error("Seed products missing");
+  const campaign = products.find((product) => product.slug === "campaign-narrative-system");
+  const promptAtelier = products.find((product) => product.slug === "prompt-atelier");
+  if (!northline || !atlas || !campaign || !promptAtelier) {
+    throw new Error("Seed products missing");
+  }
+
+  await prisma.product.create({
+    data: {
+      creatorId: mira.id,
+      categoryId: bySlug.design.id,
+      title: "Unreleased Type Experiments",
+      slug: "unreleased-type-experiments",
+      shortDescription: "A private specimen, not for the marketplace yet.",
+      description:
+        "Draft sketches and failed pairings. This listing stays unpublished so the catalog stays edited.",
+      price: 0,
+      currency: Currency.USD,
+      productType: ProductType.DIGITAL_DOWNLOAD,
+      status: ProductStatus.DRAFT,
+      coverImage: img("photo-1561070791-2526d30994b5"),
+    },
+  });
 
   const order = await prisma.order.create({
     data: {
@@ -482,6 +620,68 @@ async function main() {
     },
   });
 
+  await prisma.order.create({
+    data: {
+      customerId: sofia.id,
+      totalAmount: campaign.price + promptAtelier.price,
+      currency: Currency.USD,
+      status: "PAID",
+      items: {
+        create: [
+          {
+            productId: campaign.id,
+            creatorId: asha.id,
+            price: campaign.price,
+            quantity: 1,
+          },
+          {
+            productId: promptAtelier.id,
+            creatorId: mira.id,
+            price: promptAtelier.price,
+            quantity: 1,
+          },
+        ],
+      },
+      payment: {
+        create: {
+          provider: "RAZORPAY",
+          providerPaymentId: "pay_seed_sofia_campaign",
+          amount: campaign.price + promptAtelier.price,
+          currency: Currency.USD,
+          status: "SUCCESS",
+        },
+      },
+    },
+  });
+
+  await prisma.order.create({
+    data: {
+      customerId: leah.id,
+      totalAmount: campaign.price,
+      currency: Currency.USD,
+      status: "PAID",
+      items: {
+        create: [
+          {
+            productId: campaign.id,
+            creatorId: asha.id,
+            price: campaign.price,
+            quantity: 1,
+          },
+        ],
+      },
+      payment: {
+        create: {
+          provider: "RAZORPAY",
+          providerPaymentId: "pay_seed_leah_campaign",
+          amount: campaign.price,
+          currency: Currency.USD,
+          status: "SUCCESS",
+        },
+      },
+    },
+  });
+
   await prisma.review.create({
     data: {
       productId: northline.id,
@@ -500,6 +700,24 @@ async function main() {
     },
   });
 
+  await prisma.review.create({
+    data: {
+      productId: campaign.id,
+      userId: sofia.id,
+      rating: 5,
+      comment: "Finally a launch kit that does not smell like a funnel course.",
+    },
+  });
+
+  await prisma.review.create({
+    data: {
+      productId: promptAtelier.id,
+      userId: sofia.id,
+      rating: 4,
+      comment: "The negative vocabularies saved a week of guessing.",
+    },
+  });
+
   await prisma.cart.create({
     data: {
       customerId: sofia.id,
@@ -513,7 +731,7 @@ async function main() {
   console.log("Dev password for all accounts: password12");
   console.log({
     admin: admin.email,
-    creators: [miraUser.email, kenjiUser.email, julianUser.email],
+    creators: [miraUser.email, kenjiUser.email, julianUser.email, ashaUser.email],
     customers: [leah.email, owen.email, sofia.email],
     products: products.length,
     order: order.id,

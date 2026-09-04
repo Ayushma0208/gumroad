@@ -39,7 +39,12 @@ export function validateQuery(schema: ZodType): RequestHandler {
       );
       return;
     }
-    req.query = parsed.data as typeof req.query;
+    Object.defineProperty(req, "query", {
+      value: parsed.data,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
     next();
   };
 }
