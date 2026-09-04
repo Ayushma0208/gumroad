@@ -8,8 +8,9 @@
     "dev:web": "pnpm --filter @lumen/web dev",
     "dev:api": "pnpm --filter @lumen/api dev",
     "build": "pnpm --filter @lumen/web build",
-    "lint": "pnpm --filter @lumen/web lint",
-    "typecheck": "pnpm --filter @lumen/web typecheck"
+    "lint": "pnpm --filter @lumen/web lint && pnpm --filter @lumen/api lint",
+    "typecheck": "pnpm --filter @lumen/web typecheck && pnpm --filter @lumen/api typecheck",
+    "test:api": "pnpm --filter @lumen/api test"
   },
   "engines": {
     "node": ">=20"

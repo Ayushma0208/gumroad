@@ -4,12 +4,14 @@ import {
   Package,
   Receipt,
   Settings,
+  Users,
 } from "lucide-react";
 
 export const studioNav = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/products", label: "Products", icon: Package, exact: false },
   { href: "/dashboard/sales", label: "Sales", icon: Receipt, exact: false },
+  { href: "/dashboard/customers", label: "Customers", icon: Users, exact: false },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: false },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },
 ] as const;

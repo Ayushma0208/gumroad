@@ -4,9 +4,11 @@ import { cn } from "@/lib/utils";
 export function Logo({
   className,
   inverse = false,
+  markOnly = false,
 }: {
   className?: string;
   inverse?: boolean;
+  markOnly?: boolean;
 }) {
   return (
     <Link
@@ -26,9 +28,13 @@ export function Logo({
       >
         <span className="size-2 rounded-full bg-brand" />
       </span>
-      <span className="font-display text-[1.35rem] leading-none tracking-tight">
-        Lumen
-      </span>
+      {markOnly ? (
+        <span className="sr-only">Lumen</span>
+      ) : (
+        <span className="font-display text-[1.35rem] leading-none tracking-tight">
+          Lumen
+        </span>
+      )}
     </Link>
   );
 }

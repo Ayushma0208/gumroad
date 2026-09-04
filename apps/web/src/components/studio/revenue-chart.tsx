@@ -1,5 +1,8 @@
 "use client";
 
+import { formatPrice } from "@/lib/format";
+import { ChartTooltip } from "@/components/studio/chart-tooltip";
+import type { RevenuePoint } from "@/types/studio";
 import {
   Area,
   AreaChart,
@@ -10,21 +13,16 @@ import {
   YAxis,
 } from "recharts";
 
-const emptyWeek = [
-  { day: "Mon", revenue: 0 },
-  { day: "Tue", revenue: 0 },
-  { day: "Wed", revenue: 0 },
-  { day: "Thu", revenue: 0 },
-  { day: "Fri", revenue: 0 },
-  { day: "Sat", revenue: 0 },
-  { day: "Sun", revenue: 0 },
-];
+export function RevenueChart({ data }: { data: RevenuePoint[] }) {
+  const chartData = data.map((point) => ({
+    ...point,
+    revenue: point.revenueCents,
+  }));
 
-export function RevenueChart() {
   return (
-    <div className="h-56 w-full">
+    <div className="h-64 w-full sm:h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={emptyWeek} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
           <defs>
             <linearGradient id="lumen-revenue" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.28} />
@@ -37,7 +35,7 @@ export function RevenueChart() {
             strokeDasharray="4 6"
           />
           <XAxis
-            dataKey="day"
+            dataKey="label"
             tickLine={false}
             axisLine={false}
             tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
@@ -45,23 +43,17 @@ export function RevenueChart() {
           <YAxis
             tickLine={false}
             axisLine={false}
-            width={36}
+            width={52}
             tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
-            tickFormatter={(value) => `$${value}`}
+            tickFormatter={(value: number) =>
+              formatPrice(value).replace(/\.00$/, "")
+            }
           />
-          <Tooltip
-            cursor={{ stroke: "var(--border)" }}
-            contentStyle={{
-              background: "var(--card)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              fontSize: 13,
-            }}
-            formatter={(value) => [`$${value}`, "Revenue"]}
-          />
+          <Tooltip content={<ChartTooltip currency />} />
           <Area
             type="monotone"
             dataKey="revenue"
+            name="Revenue"
             stroke="var(--brand)"
             strokeWidth={2}
             fill="url(#lumen-revenue)"

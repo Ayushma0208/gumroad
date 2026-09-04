@@ -1,3 +1,10 @@
+import { remoteApiEnabled } from "@/lib/api/http";
+import {
+  fetchRemoteCategories,
+  fetchRemoteProductBySlug,
+  fetchRemoteProducts,
+  mapApiProduct,
+} from "@/lib/api/catalog";
 import {
   categories,
   getEditorsPicks as getMockEditorsPicks,
@@ -25,32 +32,60 @@ import type {
 } from "@/types/catalog";
 
 /**
- * Catalog reads currently return structured mock data.
- * Swap these functions to `api("/products")` once the Express module is live.
+ * Catalog reads use Express `/api/v1` when NEXT_PUBLIC_USE_REMOTE_API
+ * (or NEXT_PUBLIC_USE_REMOTE_AUTH) is true. Otherwise the mock catalog.
  */
 export async function listProducts(): Promise<Product[]> {
+  if (remoteApiEnabled()) {
+    return fetchRemoteProducts();
+  }
   return products;
 }
 
 export async function listCategories(): Promise<Category[]> {
+  if (remoteApiEnabled()) {
+    return fetchRemoteCategories();
+  }
   return categories;
 }
 
 export async function listFeaturedProducts(): Promise<Product[]> {
+  if (remoteApiEnabled()) {
+    return (await fetchRemoteProducts()).filter((product) => product.featured);
+  }
   return getMockFeaturedProducts();
 }
 
 export async function listTrendingProducts(): Promise<Product[]> {
+  if (remoteApiEnabled()) {
+    return (await fetchRemoteProducts()).filter((product) => product.trending);
+  }
   return getMockTrendingProducts();
 }
 
 export async function listEditorsPicks(): Promise<Product[]> {
+  if (remoteApiEnabled()) {
+    return (await fetchRemoteProducts()).filter((product) => product.editorsPick);
+  }
   return getMockEditorsPicks();
 }
 
 export async function getProductBySlug(
   slug: string,
 ): Promise<ProductDetail | null> {
+  if (remoteApiEnabled()) {
+    const remote = await fetchRemoteProductBySlug(slug);
+    if (!remote) return null;
+    const product = mapApiProduct(remote);
+    const images = [
+      remote.coverImage,
+      ...(remote.images ?? []).filter((url) => url !== remote.coverImage),
+    ];
+    return {
+      ...hydrateProduct(product),
+      images,
+    };
+  }
   const product = getMockProductBySlug(slug);
   if (!product) return null;
   return hydrateProduct(product);
@@ -60,11 +95,13 @@ export async function listRelatedProducts(
   product: Product,
   limit = 4,
 ): Promise<Product[]> {
-  return getRelatedProducts(product, products, limit);
+  const catalog = remoteApiEnabled() ? await fetchRemoteProducts() : products;
+  return getRelatedProducts(product, catalog, limit);
 }
 
 export async function listProductSlugs(): Promise<string[]> {
-  return products.map((product) => product.slug);
+  const catalog = remoteApiEnabled() ? await fetchRemoteProducts() : products;
+  return catalog.map((product) => product.slug);
 }
 
 export function searchCatalog(filters: CatalogFilters): Product[] {
