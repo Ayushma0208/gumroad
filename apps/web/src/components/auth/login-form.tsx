@@ -19,7 +19,10 @@ import { useToastStore } from "@/stores/toast-store";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = safeNextPath(searchParams.get("next"), "");
+  const next = safeNextPath(
+    searchParams.get("next") ?? searchParams.get("redirect"),
+    "",
+  );
   const login = useLoginMutation();
   const showToast = useToastStore((state) => state.show);
 

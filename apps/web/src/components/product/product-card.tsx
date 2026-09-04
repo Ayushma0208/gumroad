@@ -1,6 +1,7 @@
 import { Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { ProductCardCartButton } from "@/components/product/product-card-cart-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCompactNumber, formatPrice } from "@/lib/format";
 import { productPath } from "@/lib/paths";
@@ -176,6 +177,10 @@ export function ProductCard({
           <span className="absolute right-3 bottom-3 font-mono text-sm text-white">
             {formatPrice(product.priceCents, product.currency)}
           </span>
+          <ProductCardCartButton
+            product={product}
+            className="absolute top-3 right-3 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+          />
         </div>
         <div className="flex flex-1 flex-col pt-4">
           <h3 className="text-[1.05rem] font-medium tracking-tight text-balance transition-colors group-hover:text-brand">

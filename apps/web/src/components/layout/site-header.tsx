@@ -18,14 +18,14 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { navLinks } from "@/lib/site";
 import { cn } from "@/lib/utils";
-import { selectCartCount, useCartStore } from "@/stores/cart-store";
+import { useCartCount } from "@/hooks/use-cart";
 import { isCreatorRole } from "@/types/auth";
 
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const cartCount = useCartStore(selectCartCount);
+  const cartCount = useCartCount();
   const { user, isLoading } = useAuth();
   const creator = user ? isCreatorRole(user.role) : false;
 

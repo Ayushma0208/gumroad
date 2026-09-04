@@ -39,6 +39,7 @@ export function useLoginMutation() {
     mutationFn: (input: LoginValues) => loginAccount(input),
     onSuccess: (user) => {
       queryClient.setQueryData(currentUserQueryKey, user);
+      void queryClient.invalidateQueries({ queryKey: ["cart"] });
     },
   });
 }
@@ -49,6 +50,7 @@ export function useRegisterMutation() {
     mutationFn: (input: SignupValues) => registerAccount(input),
     onSuccess: (user) => {
       queryClient.setQueryData(currentUserQueryKey, user);
+      void queryClient.invalidateQueries({ queryKey: ["cart"] });
     },
   });
 }
@@ -59,6 +61,7 @@ export function useLogoutMutation() {
     mutationFn: () => logoutAccount(),
     onSuccess: () => {
       queryClient.setQueryData(currentUserQueryKey, null);
+      queryClient.removeQueries({ queryKey: ["cart"] });
     },
   });
 }

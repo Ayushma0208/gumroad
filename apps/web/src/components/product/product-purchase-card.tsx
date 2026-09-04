@@ -3,7 +3,7 @@
 import { Check, LoaderCircle, Lock, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useProductCart } from "@/hooks/use-product-cart";
 import { PRODUCT_TYPE_LABELS } from "@/lib/catalog/query";
@@ -19,20 +19,21 @@ export function ProductPurchaseCard({
   variant?: "panel" | "bar";
 }) {
   const router = useRouter();
-  const { inCart, addToCart } = useProductCart(product);
-  const [adding, setAdding] = useState(false);
+  const { inCart, addToCart, adding } = useProductCart(product);
   const [buying, startBuy] = useTransition();
 
-  function onAdd() {
-    setAdding(true);
-    addToCart();
-    window.setTimeout(() => setAdding(false), 400);
+  async function onAdd() {
+    if (adding || buying) return;
+    await addToCart();
   }
 
   function onBuy() {
-    addToCart({ silent: true });
-    startBuy(() => {
-      router.push(`/checkout?product=${product.slug}`);
+    if (adding || buying) return;
+    startBuy(async () => {
+      const added = await addToCart({ silent: true });
+      if (added || inCart) {
+        router.push(`/checkout?product=${product.slug}`);
+      }
     });
   }
 

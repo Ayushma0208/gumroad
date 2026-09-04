@@ -8,22 +8,42 @@ import { Container } from "@/components/layout/container";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useCart } from "@/hooks/use-cart";
 import type { CheckoutLine } from "@/lib/api/checkout";
 import { formatPrice } from "@/lib/format";
 import { productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
-import { useCartStore } from "@/stores/cart-store";
 
 export function CheckoutExperience({
   preset,
 }: {
   preset: CheckoutLine | null;
 }) {
-  const items = useCartStore((state) => state.items);
-
-  const lines = preset ? [preset] : items;
+  const cart = useCart();
+  const lines: CheckoutLine[] = preset
+    ? [preset]
+    : (cart.data?.items ?? []).map((item) => ({
+        productId: item.product.id,
+        slug: item.product.slug,
+        title: item.product.title,
+        priceCents: item.product.priceCents,
+        currency: item.product.currency,
+        imageUrl: item.product.coverImage,
+      }));
 
   const total = lines.reduce((sum, item) => sum + item.priceCents, 0);
+
+  if (!preset && cart.isPending) {
+    return (
+      <Container className="py-8 sm:py-12">
+        <PageHeader
+          eyebrow="Checkout"
+          title="Review and pay"
+          description="Razorpay is not connected yet. Nothing has been charged."
+        />
+      </Container>
+    );
+  }
 
   if (lines.length === 0) {
     return (
@@ -42,7 +62,8 @@ export function CheckoutExperience({
       <PageHeader
         eyebrow="Checkout"
         title="Review and pay"
-        description="Razorpay is not connected yet. Your bag is saved on this device — nothing has been charged."
+        description="Checkout currently prepares a draft intent. Payment is not connected.
+Your bag is loaded from the server cart — nothing has been charged."
       />
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-start">
