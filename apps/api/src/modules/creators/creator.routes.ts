@@ -7,6 +7,9 @@ import {
 import { asyncHandler } from "../../utils/async-handler";
 import { checkSlug, onboard } from "./creator.controller";
 import { onboardCreatorSchema, slugQuerySchema } from "./creator.schema";
+import { createAvatar } from "../media/media.controller";
+import { uploadAvatarMiddleware } from "../media/upload.middleware";
+import { requireRole } from "../../middleware/role.middleware";
 
 export const creatorRouter = Router();
 
@@ -21,4 +24,11 @@ creatorRouter.post(
   requireAuth,
   validateBody(onboardCreatorSchema),
   asyncHandler(onboard),
+);
+creatorRouter.post(
+  "/me/avatar",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  uploadAvatarMiddleware,
+  asyncHandler(createAvatar),
 );

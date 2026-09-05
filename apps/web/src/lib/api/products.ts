@@ -204,9 +204,25 @@ function hydrateProduct(
     highlights: content?.highlights ?? [],
     audience: content?.audience ?? [],
     outcomes: content?.outcomes ?? [],
-    includedItems: content?.includedItems ?? defaultIncludes(),
+    includedItems: withFileCount(
+      content?.includedItems ?? defaultIncludes(),
+      product.fileCount,
+    ),
     reviews: useMockReviews ? getReviewsForProduct(product.id) : [],
   };
+}
+
+function withFileCount(items: IncludedItem[], fileCount?: number): IncludedItem[] {
+  if (!fileCount) return items;
+  return [
+    {
+      id: "files",
+      label: `${fileCount} downloadable file${fileCount === 1 ? "" : "s"}`,
+      icon: "download",
+      detail: "Available in your library after purchase. Direct links are never public.",
+    },
+    ...items.filter((item) => item.id !== "files"),
+  ];
 }
 
 function defaultIncludes(): IncludedItem[] {

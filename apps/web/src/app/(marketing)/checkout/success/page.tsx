@@ -76,7 +76,7 @@ function SuccessBody() {
         {formatPrice(order.totalCents, order.currency)}
       </p>
       <div className="mt-10 flex flex-wrap justify-center gap-3">
-        <Link href="/library" className={cn(buttonVariants({ size: "xl" }), "rounded-xl")}>
+        <Link href={order.items.length === 1 ? `/library/${order.items[0]?.productId}` : "/library"} className={cn(buttonVariants({ size: "xl" }), "rounded-xl")}>
           View library
         </Link>
         <Link

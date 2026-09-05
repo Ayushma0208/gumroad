@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, type FieldPath } from "react-hook-form";
 import { Field, fieldControlClass } from "@/components/studio/field";
 import {
@@ -30,6 +30,12 @@ import {
   useSaveProductMutation,
 } from "@/hooks/use-studio";
 import { categories as mockCategories } from "@/lib/mock/catalog";
+import {
+  listProductFiles,
+  listProductImages,
+  type ManagedProductFile,
+  type ManagedProductImage,
+} from "@/lib/api/media";
 import { formatPrice } from "@/lib/format";
 import { pricingCopy, productKindCopy } from "@/lib/studio/copy";
 import {
@@ -44,16 +50,19 @@ import type { StudioProduct, StudioProductKind } from "@/types/studio";
 const steps = [
   { id: "type", label: "Type" },
   { id: "details", label: "Details" },
-  { id: "media", label: "Media" },
+  { id: "images", label: "Images" },
+  { id: "files", label: "Files" },
   { id: "pricing", label: "Pricing" },
   { id: "review", label: "Review" },
+  { id: "publish", label: "Publish" },
 ] as const;
 
 const stepFields: Record<number, FieldPath<ProductDraftValues>[]> = {
   0: ["kind"],
   1: ["title", "shortDescription", "description", "categorySlug"],
-  2: ["coverUrl", "files"],
-  3: ["pricingModel", "priceCents", "currency", "minPriceCents", "suggestedPriceCents"],
+  2: ["coverUrl"],
+  3: ["files"],
+  4: ["pricingModel", "priceCents", "currency", "minPriceCents", "suggestedPriceCents"],
 };
 
 const kinds: {
@@ -100,6 +109,16 @@ export function ProductEditor({
   const categoryOptions = categoriesQuery.data ?? mockCategories;
   const showToast = useToastStore((state) => state.show);
   const [step, setStep] = useState(0);
+  const [productId, setProductId] = useState(product?.id);
+  const [galleryImages, setGalleryImages] = useState<ManagedProductImage[]>([]);
+  const [managedFiles, setManagedFiles] = useState<ManagedProductFile[]>(
+    (product?.files ?? []).map((file) => ({
+      id: file.id,
+      fileName: file.name,
+      fileSize: file.sizeBytes,
+      mimeType: file.mimeType,
+    })),
+  );
 
   const form = useForm<ProductDraftValues>({
     resolver: zodResolver(productDraftSchema),
@@ -109,21 +128,77 @@ export function ProductEditor({
 
   const dirty = form.formState.isDirty;
 
+  useEffect(() => {
+    if (!productId) return;
+    void Promise.all([
+      listProductImages(productId),
+      listProductFiles(productId),
+    ]).then(([imagePayload, filePayload]) => {
+      setGalleryImages(imagePayload.images);
+      setManagedFiles(filePayload.files);
+      form.setValue(
+        "files",
+        filePayload.files.map((file) => ({
+          id: file.id,
+          name: file.fileName,
+          sizeBytes: file.fileSize,
+          mimeType: file.mimeType,
+        })),
+        { shouldValidate: true },
+      );
+      const cover = imagePayload.images[0]?.url;
+      if (cover) form.setValue("coverUrl", cover);
+    }).catch(() => undefined);
+  }, [productId, form]);
+
   async function persist(
     status: "draft" | "published",
     options: { navigate?: boolean } = { navigate: true },
   ) {
-    const valid = await form.trigger();
-    if (!valid) {
-      setStep(1);
-      return;
+    if (status === "published") {
+      const valid = await form.trigger();
+      if (!valid) {
+        setStep(1);
+        return;
+      }
+      if (managedFiles.length === 0 || !(form.getValues("coverUrl") || galleryImages[0]?.url)) {
+        showToast({
+          title: "Cannot publish product",
+          description: "Add a cover image and at least one downloadable file.",
+        });
+        setStep(managedFiles.length === 0 ? 3 : 2);
+        return;
+      }
+    } else {
+      const valid = await form.trigger([
+        "kind",
+        "title",
+        "shortDescription",
+        "description",
+        "categorySlug",
+      ]);
+      if (!valid) {
+        setStep(1);
+        return;
+      }
     }
-    const draft = form.getValues();
+    const draft = {
+      ...form.getValues(),
+      files: managedFiles.map((file) => ({
+        id: file.id,
+        name: file.fileName,
+        sizeBytes: file.fileSize,
+        mimeType: file.mimeType,
+      })),
+      gallery: galleryImages.map((image) => image.url),
+      coverUrl: form.getValues("coverUrl") || galleryImages[0]?.url || "",
+    };
     const next = await save.mutateAsync({
       draft,
       status,
-      productId: product?.id,
+      productId,
     });
+    setProductId(next.id);
     form.reset(productToDraft(next));
     showToast({
       title: status === "published" ? "Published" : "Draft saved",
@@ -133,12 +208,27 @@ export function ProductEditor({
       router.push("/dashboard/products");
       router.refresh();
     }
+    return next;
+  }
+
+  async function ensureDraft() {
+    if (productId) return productId;
+    const valid = await form.trigger(["title", "shortDescription", "description", "categorySlug"]);
+    if (!valid) {
+      setStep(1);
+      return undefined;
+    }
+    const next = await persist("draft", { navigate: false });
+    return next?.id;
   }
 
   async function nextStep() {
     const fields = stepFields[step];
     const valid = fields ? await form.trigger(fields) : true;
     if (!valid) return;
+    if (step === 1) {
+      await ensureDraft();
+    }
     setStep((current) => Math.min(steps.length - 1, current + 1));
   }
 
@@ -208,10 +298,42 @@ export function ProductEditor({
         {step === 1 ? (
           <DetailsStep form={form} categories={categoryOptions} />
         ) : null}
-        {step === 2 ? <MediaStep form={form} /> : null}
-        {step === 3 ? <PricingStep form={form} /> : null}
-        {step === 4 ? (
+        {step === 2 ? (
+          <ImagesStep
+            form={form}
+            productId={productId}
+            images={galleryImages}
+            onImagesChange={setGalleryImages}
+            onNeedProduct={ensureDraft}
+          />
+        ) : null}
+        {step === 3 ? (
+          <FilesStep
+            form={form}
+            productId={productId}
+            files={managedFiles}
+            onFilesChange={(next) => {
+              setManagedFiles(next);
+              form.setValue(
+                "files",
+                next.map((file) => ({
+                  id: file.id,
+                  name: file.fileName,
+                  sizeBytes: file.fileSize,
+                  mimeType: file.mimeType,
+                })),
+                { shouldDirty: true, shouldValidate: true },
+              );
+            }}
+            onNeedProduct={ensureDraft}
+          />
+        ) : null}
+        {step === 4 ? <PricingStep form={form} /> : null}
+        {step === 5 ? (
           <ReviewStep values={form.getValues()} categories={categoryOptions} />
+        ) : null}
+        {step === 6 ? (
+          <PublishStep fileCount={managedFiles.length} cover={form.watch("coverUrl")} />
         ) : null}
 
         <div className="mt-10 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -224,7 +346,7 @@ export function ProductEditor({
             Back
           </Button>
           <div className="flex flex-wrap gap-2">
-            {step < 4 ? (
+            {step < 6 ? (
               <Button type="button" size="lg" className="rounded-xl" onClick={() => void nextStep()}>
                 Continue
               </Button>
@@ -397,14 +519,20 @@ function DetailsStep({
   );
 }
 
-function MediaStep({
+function ImagesStep({
   form,
+  productId,
+  images,
+  onImagesChange,
+  onNeedProduct,
 }: {
   form: ReturnType<typeof useForm<ProductDraftValues>>;
+  productId?: string;
+  images: ManagedProductImage[];
+  onImagesChange: (images: ManagedProductImage[]) => void;
+  onNeedProduct: () => Promise<string | undefined>;
 }) {
   const cover = form.watch("coverUrl");
-  const gallery = form.watch("gallery");
-  const files = form.watch("files");
   const errors = form.formState.errors;
 
   return (
@@ -412,25 +540,68 @@ function MediaStep({
       <Field label="Cover image" error={errors.coverUrl?.message}>
         <CoverUploader
           value={cover}
+          productId={productId}
+          onNeedProduct={onNeedProduct}
           onChange={(url) => form.setValue("coverUrl", url, { shouldDirty: true, shouldValidate: true })}
         />
       </Field>
-      <Field label="Preview images" hint="Optional extra stills for the product page.">
+      <Field label="Gallery" hint="Reorder so the first still is primary.">
         <GalleryUploader
-          values={gallery}
-          onChange={(urls) => form.setValue("gallery", urls, { shouldDirty: true })}
+          productId={productId}
+          images={images}
+          onChange={onImagesChange}
+          onNeedProduct={onNeedProduct}
         />
       </Field>
-      <Field
-        label="Product files"
-        hint="These are what buyers receive after payment. S3 upload will replace this local preview later."
-        error={errors.files?.message}
-      >
-        <FileUploader
-          files={files}
-          onChange={(next) => form.setValue("files", next, { shouldDirty: true, shouldValidate: true })}
-        />
-      </Field>
+    </div>
+  );
+}
+
+function FilesStep({
+  form,
+  productId,
+  files,
+  onFilesChange,
+  onNeedProduct,
+}: {
+  form: ReturnType<typeof useForm<ProductDraftValues>>;
+  productId?: string;
+  files: ManagedProductFile[];
+  onFilesChange: (files: ManagedProductFile[]) => void;
+  onNeedProduct: () => Promise<string | undefined>;
+}) {
+  const errors = form.formState.errors;
+  return (
+    <Field
+      label="Digital files"
+      hint="Buyers receive these after a verified payment. Links expire."
+      error={errors.files?.message}
+    >
+      <FileUploader
+        productId={productId}
+        files={files}
+        onChange={onFilesChange}
+        onNeedProduct={onNeedProduct}
+      />
+    </Field>
+  );
+}
+
+function PublishStep({ fileCount, cover }: { fileCount: number; cover: string }) {
+  const ready = fileCount > 0 && Boolean(cover);
+  return (
+    <div className="rounded-2xl border border-border p-6">
+      <p className="text-xs font-medium tracking-[0.16em] text-muted-foreground uppercase">
+        Publish
+      </p>
+      <h2 className="mt-3 font-display text-3xl tracking-tight">
+        {ready ? "Ready for the marketplace" : "Cannot publish product"}
+      </h2>
+      <p className="mt-3 text-sm text-muted-foreground">
+        {ready
+          ? "A cover, description, price, and at least one file are in place."
+          : "Add at least one downloadable file and a cover image before this listing can go live."}
+      </p>
     </div>
   );
 }

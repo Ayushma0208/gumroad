@@ -4,9 +4,9 @@ export type ProductRecord = Product & {
   category: Category;
   creator: CreatorProfile & { user: Pick<User, "id" | "name" | "avatarUrl"> };
   images: { url: string; sortOrder: number }[];
-  files?: { id: string; fileName: string; fileSize: number; mimeType: string }[];
+  files?: { id: string; fileName: string; fileSize: number; mimeType: string; format?: string }[];
   reviews: { rating: number }[];
-  _count?: { orderItems?: number };
+  _count?: { orderItems?: number; files?: number };
 };
 
 export function serializeProduct(
@@ -60,12 +60,14 @@ export function serializeProduct(
     rating,
     reviewCount: ratings.length,
     salesCount: product._count?.orderItems ?? 0,
+    fileCount: product._count?.files ?? product.files?.length ?? 0,
     files: options.includeFiles
       ? (product.files ?? []).map((file) => ({
           id: file.id,
           fileName: file.fileName,
           fileSize: file.fileSize,
           mimeType: file.mimeType,
+          format: file.format,
         }))
       : undefined,
   };

@@ -67,6 +67,7 @@ model User {
   orders         Order[]
   purchases      Purchase[]
   reviews        Review[]
+  downloads      Download[]
 }
 
 model CreatorProfile {
@@ -78,6 +79,9 @@ model CreatorProfile {
   slug        String   @unique
   bio         String
   avatar      String?
+  avatarPublicId String?
+  banner      String?
+  bannerPublicId String?
   category    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -128,6 +132,7 @@ model Product {
   orderItems OrderItem[]
   purchases  Purchase[]
   reviews    Review[]
+  downloads  Download[]
 
   @@index([creatorId])
   @@index([categoryId])
@@ -142,25 +147,39 @@ model Product {
 }
 
 model ProductImage {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  publicId  String
   url       String
-  sortOrder Int     @default(0)
+  width     Int?
+  height    Int?
+  format    String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
 
   @@index([productId])
+  @@index([publicId])
 }
 
 model ProductFile {
-  id         String  @id @default(cuid())
-  productId  String
-  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  fileName   String
-  storageKey String
-  fileSize   Int
-  mimeType   String
+  id           String     @id @default(cuid())
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  fileName     String
+  publicId     String
+  resourceType String     @default("raw")
+  format       String     @default("")
+  fileSize     Int
+  mimeType     String
+  version      Int?
+  isPrivate    Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  downloads    Download[]
 
   @@index([productId])
+  @@index([publicId])
 }
 
 model Cart {
@@ -200,6 +219,7 @@ model Order {
   items       OrderItem[]
   payment     Payment?
   purchases   Purchase[]
+  downloads   Download[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -258,6 +278,25 @@ model Purchase {
   @@index([userId])
   @@index([productId])
   @@index([orderId])
+}
+
+model Download {
+  id            String      @id @default(cuid())
+  userId        String
+  productId     String
+  productFileId String
+  orderId       String
+  createdAt     DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productFile   ProductFile @relation(fields: [productFileId], references: [id], onDelete: Restrict)
+  order         Order       @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([productId])
+  @@index([productFileId])
+  @@index([orderId])
+  @@index([userId, createdAt])
 }
 
 model Review {

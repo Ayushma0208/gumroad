@@ -52,7 +52,8 @@ export type ApiProduct = {
     headline?: string;
   };
   images?: string[];
-  files?: { id: string; fileName: string; fileSize: number; mimeType: string }[];
+    files?: { id: string; fileName: string; fileSize: number; mimeType: string; format?: string }[];
+    fileCount?: number;
   rating: number;
   reviewCount: number;
   salesCount: number;
@@ -131,6 +132,7 @@ export function mapApiProduct(product: ApiProduct): Product {
     rating: product.rating,
     reviewCount: product.reviewCount,
     salesCount: product.salesCount,
+    fileCount: product.fileCount,
     featured: product.isFeatured ?? product.featured,
     trending: product.trending,
     editorsPick: product.editorsPick,

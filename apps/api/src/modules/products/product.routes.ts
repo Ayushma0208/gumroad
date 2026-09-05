@@ -21,6 +21,19 @@ import {
   update,
 } from "./product.controller";
 import {
+  createFile,
+  createImage,
+  listFiles,
+  listImages,
+  removeFile,
+  removeImage,
+  reorderImages,
+} from "../media/media.controller";
+import {
+  uploadProductFileMiddleware,
+  uploadProductImageMiddleware,
+} from "../media/upload.middleware";
+import {
   createProductSchema,
   listProductsQuerySchema,
   myProductsQuerySchema,
@@ -42,6 +55,50 @@ productRouter.get(
 );
 productRouter.get("/slug/:slug", asyncHandler(getBySlug));
 productRouter.get("/:id/related", asyncHandler(related));
+productRouter.get(
+  "/:productId/files",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  asyncHandler(listFiles),
+);
+productRouter.post(
+  "/:productId/files",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  uploadProductFileMiddleware,
+  asyncHandler(createFile),
+);
+productRouter.delete(
+  "/:productId/files/:fileId",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  asyncHandler(removeFile),
+);
+productRouter.get(
+  "/:productId/images",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  asyncHandler(listImages),
+);
+productRouter.post(
+  "/:productId/images",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  uploadProductImageMiddleware,
+  asyncHandler(createImage),
+);
+productRouter.patch(
+  "/:productId/images/reorder",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  asyncHandler(reorderImages),
+);
+productRouter.delete(
+  "/:productId/images/:imageId",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  asyncHandler(removeImage),
+);
 productRouter.get("/:id", optionalAuth, asyncHandler(getById));
 
 productRouter.post(

@@ -20,6 +20,7 @@ const {
   creatorFindUnique,
   userFindUnique,
   productImageDeleteMany,
+  productFileCount,
   transaction,
 } = vi.hoisted(() => ({
   productFindMany: vi.fn(),
@@ -38,7 +39,21 @@ const {
   creatorFindUnique: vi.fn(),
   userFindUnique: vi.fn(),
   productImageDeleteMany: vi.fn(),
+  productFileCount: vi.fn(),
   transaction: vi.fn(),
+}));
+
+vi.mock("../src/config/cloudinary", () => ({
+  destroyCloudinaryAsset: vi.fn().mockResolvedValue({ result: "ok" }),
+  uploadPublicImage: vi.fn(),
+  uploadPrivateFile: vi.fn(),
+  signedDeliveryUrl: vi.fn(),
+  cloudinaryFolders: {
+    productImages: (id: string) => `marketplace/products/${id}/images`,
+    productFiles: (id: string) => `marketplace/products/${id}/files`,
+    creatorAvatar: (id: string) => `marketplace/creators/${id}/avatar`,
+    creatorBanner: (id: string) => `marketplace/creators/${id}/banner`,
+  },
 }));
 
 vi.mock("../src/config/database", () => ({
@@ -63,6 +78,7 @@ vi.mock("../src/config/database", () => ({
     creatorProfile: { findUnique: creatorFindUnique },
     user: { findUnique: userFindUnique },
     productImage: { deleteMany: productImageDeleteMany },
+    productFile: { count: productFileCount },
     $transaction: transaction,
     $connect: vi.fn(),
   },
@@ -137,11 +153,11 @@ function productRecord(
         fileName: "northline.zip",
         fileSize: 12_000_000,
         mimeType: "application/zip",
-        storageKey: "private/products/northline/source.zip",
+        publicId: "marketplace/products/northline/files/source",
       },
     ],
     reviews: [{ rating: 5 }, { rating: 4 }],
-    _count: { orderItems: 18 },
+    _count: { orderItems: 18, files: 1 },
     ...overrides,
   };
 }
@@ -214,6 +230,7 @@ describe("products and categories", () => {
     expect(response.body.data.items[0].files).toBeUndefined();
     expect(response.body.data.items[0].creator.storeName).toBe("Northline Studio");
     expect(JSON.stringify(response.body)).not.toContain("storageKey");
+    expect(JSON.stringify(response.body)).not.toContain("publicId");
     expect(JSON.stringify(response.body)).not.toContain("passwordHash");
     expect(response.body.data.pagination).toMatchObject({
       page: 1,
@@ -381,10 +398,26 @@ describe("products and categories", () => {
     expect(productUpdate).not.toHaveBeenCalled();
   });
 
+  it("does not publish a product without a digital file", async () => {
+    const cookies = session(miraUser);
+    productFindUnique.mockResolvedValue(productRecord({ status: "DRAFT" }));
+    creatorFindUnique.mockResolvedValue(creator());
+    productFileCount.mockResolvedValue(0);
+
+    const response = await request(app)
+      .post("/api/v1/products/p_northline/publish")
+      .set("Cookie", cookies);
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toMatch(/downloadable file/i);
+    expect(productUpdate).not.toHaveBeenCalled();
+  });
+
   it("publishes a product", async () => {
     const cookies = session(miraUser);
     productFindUnique.mockResolvedValue(productRecord({ status: "DRAFT" }));
     creatorFindUnique.mockResolvedValue(creator());
+    productFileCount.mockResolvedValue(1);
     productUpdate.mockResolvedValue(productRecord({ status: "PUBLISHED" }));
 
     const response = await request(app)

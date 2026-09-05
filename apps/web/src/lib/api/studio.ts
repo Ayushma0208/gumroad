@@ -113,10 +113,7 @@ function productPayload(draft: StudioProductDraft, status: StudioProductStatus) 
     price: draft.pricingModel === "free" ? 0 : draft.priceCents,
     currency: draft.currency,
     productType: typeFromKind(draft.kind),
-    coverImage: publicCover(draft.coverUrl),
-    images: [publicCover(draft.coverUrl), ...draft.gallery]
-      .filter((url, index, list) => url && !url.startsWith("blob:") && list.indexOf(url) === index)
-      .map((url, sortOrder) => ({ url, sortOrder })),
+    coverImage: publicCover(draft.coverUrl) || "",
     status:
       status === "published"
         ? "PUBLISHED"

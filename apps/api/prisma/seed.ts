@@ -522,15 +522,18 @@ async function main() {
         trending: Boolean(item.trending),
         editorsPick: Boolean(item.editorsPick),
         images: {
-          create: [{ url: img(item.cover), sortOrder: 0 }],
+          create: [{ url: img(item.cover), publicId: `marketplace/products/${item.slug}/images/cover`, sortOrder: 0 }],
         },
         files: {
           create: [
             {
               fileName: `${item.slug}.zip`,
-              storageKey: `private/products/${item.slug}/source.zip`,
+              publicId: `marketplace/products/${item.slug}/files/source`,
+              resourceType: "raw",
+              format: "zip",
               fileSize: 12_000_000,
               mimeType: "application/zip",
+              isPrivate: true,
             },
           ],
         },

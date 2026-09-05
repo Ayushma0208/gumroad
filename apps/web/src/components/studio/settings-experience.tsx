@@ -5,7 +5,7 @@ import { LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Field } from "@/components/studio/field";
-import { CoverUploader } from "@/components/studio/media-uploader";
+import { AvatarUploader } from "@/components/studio/media-uploader";
 import { StudioQueryError } from "@/components/studio/query-error";
 import { TableSkeleton } from "@/components/studio/skeletons";
 import { StudioPage } from "@/components/studio/studio-page";
@@ -108,7 +108,7 @@ function SettingsForm({
         </p>
         <div className="mt-5 space-y-5">
           <Field label="Avatar">
-            <CoverUploader
+            <AvatarUploader
               value={avatarUrl}
               onChange={(url) => form.setValue("avatarUrl", url, { shouldDirty: true })}
             />

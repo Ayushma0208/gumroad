@@ -93,3 +93,20 @@ Example `GET /api/v1/cart`:
   }
 }
 ```
+
+## Cloudinary media and library
+
+Product images are public Cloudinary uploads. Digital product files use **authenticated** Cloudinary assets. The API secret never leaves the server. Download URLs are signed and time-limited (`CLOUDINARY_DOWNLOAD_TTL_SECONDS`, default 120).
+
+| Method | Path | Auth |
+| --- | --- | --- |
+| POST/GET/DELETE | `/api/v1/products/:productId/files` | CREATOR (own) / ADMIN |
+| POST/GET/DELETE | `/api/v1/products/:productId/images` | CREATOR (own) / ADMIN |
+| PATCH | `/api/v1/products/:productId/images/reorder` | CREATOR (own) / ADMIN |
+| POST | `/api/v1/creators/me/avatar` | CREATOR / ADMIN |
+| GET | `/api/v1/library` | cookie |
+| GET | `/api/v1/library/:productId` | owner only |
+| GET | `/api/v1/library/:productId/files` | owner only |
+| GET | `/api/v1/library/products/:productId/download?fileId=` | owner only |
+
+Set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` in `apps/api/.env`. Publishing requires a cover image and at least one digital file. There is no S3 in this stack.

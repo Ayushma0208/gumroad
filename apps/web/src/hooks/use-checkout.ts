@@ -60,6 +60,7 @@ export function useVerifyRazorpayPayment() {
       void queryClient.invalidateQueries({ queryKey: cartQueryKey });
       void queryClient.invalidateQueries({ queryKey: ordersQueryKey });
       void queryClient.invalidateQueries({ queryKey: purchasesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: ["library"] });
       void queryClient.invalidateQueries({ queryKey: ["catalog"] });
       if (payload.order.id) {
         queryClient.setQueryData(orderQueryKey(payload.order.id), payload);

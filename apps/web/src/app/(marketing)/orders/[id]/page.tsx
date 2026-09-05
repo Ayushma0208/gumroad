@@ -100,6 +100,25 @@ export default function OrderDetailPage() {
           <p className="mt-4 text-xs text-muted-foreground">
             Payment {order.payment?.status ?? "unavailable"}
           </p>
+          {order.status === "PAID" ? (
+            <div className="mt-5 border-t border-border pt-4">
+              <p className="text-sm font-medium">Purchase complete</p>
+              <Link
+                href={
+                  order.items[0]
+                    ? `/library/${order.items[0].productId}`
+                    : "/library"
+                }
+                className={cn(buttonVariants({ size: "lg" }), "mt-3 w-full rounded-xl")}
+              >
+                Access your files
+              </Link>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Files unlock after this order is marked paid by the server.
+            </p>
+          )}
         </aside>
       </div>
     </Container>

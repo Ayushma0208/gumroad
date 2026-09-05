@@ -26,6 +26,7 @@ export type Product = {
   rating: number;
   reviewCount: number;
   salesCount: number;
+  fileCount?: number;
   featured?: boolean;
   trending?: boolean;
   editorsPick?: boolean;

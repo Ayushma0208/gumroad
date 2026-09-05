@@ -14,6 +14,7 @@ import { categoryRouter } from "./modules/categories/category.routes";
 import { checkoutRouter } from "./modules/checkout/checkout.routes";
 import { creatorRouter } from "./modules/creators/creator.routes";
 import { healthRouter } from "./modules/health/health.routes";
+import { libraryRouter } from "./modules/library/library.routes";
 import { orderRouter } from "./modules/orders/order.routes";
 import { webhook } from "./modules/payments/payment.controller";
 import { paymentRouter } from "./modules/payments/payment.routes";
@@ -49,6 +50,7 @@ export function createApp() {
   api.use("/creators", creatorRouter);
   api.use("/categories", categoryRouter);
   api.use("/products", productRouter);
+  api.use("/library", libraryRouter);
   api.use("/cart", cartRouter);
   api.use("/checkout", checkoutRouter);
   api.use("/orders", orderRouter);

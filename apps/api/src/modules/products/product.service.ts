@@ -7,6 +7,9 @@ import {
   skipTake,
 } from "../../utils/pagination";
 import { slugify } from "../../utils/slug";
+import { assertProductOwnership } from "../access/access.service";
+import { destroyCloudinaryAsset } from "../../config/cloudinary";
+import { logEvent } from "../../utils/logger";
 import { serializeProduct } from "./product.types";
 import type {
   CreateProductInput,
@@ -19,10 +22,15 @@ const productInclude = {
   creator: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
   images: { orderBy: { sortOrder: "asc" as const } },
   files: {
-    select: { id: true, fileName: true, fileSize: true, mimeType: true },
+    select: { id: true, fileName: true, fileSize: true, mimeType: true, format: true },
   },
   reviews: { select: { rating: true } },
-  _count: { select: { orderItems: { where: { order: { status: "PAID" as const } } } } },
+  _count: {
+    select: {
+      files: true,
+      orderItems: { where: { order: { status: "PAID" as const } } },
+    },
+  },
 } satisfies Prisma.ProductInclude;
 
 function normalizeSort(sort?: string) {
@@ -69,11 +77,7 @@ export async function assertCanManage(
   role: Role,
   product: { creatorId: string },
 ) {
-  if (role === "ADMIN") return;
-  const profile = await requireProfile(userId);
-  if (profile.id !== product.creatorId) {
-    throw forbidden("You cannot change another creator’s product.");
-  }
+  await assertProductOwnership(userId, role, product);
 }
 
 function publicWhere(filters: ListProductsQuery): Prisma.ProductWhereInput {
@@ -344,7 +348,7 @@ export async function createProduct(
   const status: ProductStatus =
     input.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
   if (status === "PUBLISHED") {
-    assertPublishable(input.coverImage, input.title);
+    await assertPublishable(input, 0);
   }
 
   const product = await prisma.product.create({
@@ -365,6 +369,7 @@ export async function createProduct(
         ? {
             create: input.images.map((image, index) => ({
               url: image.url,
+              publicId: `legacy/${slug}/${index}`,
               sortOrder: image.sortOrder ?? index,
             })),
           }
@@ -376,9 +381,33 @@ export async function createProduct(
   return serializeProduct(product, { includeFiles: true, includeStatus: true });
 }
 
-function assertPublishable(coverImage: string, title: string) {
-  if (!coverImage || !title.trim()) {
-    throw badRequest("A published product needs a title and cover image.");
+function assertPublishable(
+  input: {
+    coverImage?: string;
+    title?: string;
+    description?: string;
+    categoryId?: string;
+    price?: number;
+  },
+  fileCount: number,
+) {
+  if (!input.title?.trim()) {
+    throw badRequest("Cannot publish product. Add a title.");
+  }
+  if (!input.description?.trim()) {
+    throw badRequest("Cannot publish product. Add a description.");
+  }
+  if (!input.categoryId) {
+    throw badRequest("Cannot publish product. Pick a category.");
+  }
+  if (input.price === undefined || input.price < 0) {
+    throw badRequest("Cannot publish product. Set a price.");
+  }
+  if (!input.coverImage?.trim()) {
+    throw badRequest("Cannot publish product. Add a cover image.");
+  }
+  if (fileCount < 1) {
+    throw badRequest("Cannot publish product. Add at least one downloadable file.");
   }
 }
 
@@ -408,7 +437,17 @@ export async function updateProduct(
   if (nextStatus && nextStatus !== existing.status) {
     assertStatusTransition(existing.status, nextStatus);
     if (nextStatus === "PUBLISHED") {
-      assertPublishable(input.coverImage ?? existing.coverImage, input.title ?? existing.title);
+      const fileCount = await prisma.productFile.count({ where: { productId } });
+      assertPublishable(
+        {
+          coverImage: input.coverImage ?? existing.coverImage,
+          title: input.title ?? existing.title,
+          description: input.description ?? existing.description,
+          categoryId: input.categoryId ?? existing.categoryId,
+          price: input.price ?? existing.price,
+        },
+        fileCount,
+      );
     }
   }
 
@@ -434,6 +473,7 @@ export async function updateProduct(
         ? {
             create: input.images.map((image, index) => ({
               url: image.url,
+              publicId: `legacy/${slug}/${index}`,
               sortOrder: image.sortOrder ?? index,
             })),
           }
@@ -465,9 +505,37 @@ export async function archiveProduct(userId: string, role: Role, productId: stri
 }
 
 export async function deleteProduct(userId: string, role: Role, productId: string) {
-  const existing = await prisma.product.findUnique({ where: { id: productId } });
+  const existing = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { files: true, images: true },
+  });
   if (!existing) throw notFound("Product not found");
   await assertCanManage(userId, role, existing);
+  for (const file of existing.files) {
+    await destroyCloudinaryAsset({
+      publicId: file.publicId,
+      resourceType: file.resourceType,
+      type: file.isPrivate ? "authenticated" : "upload",
+    }).catch((error) => {
+      logEvent("cloudinary_cleanup_failed", {
+        publicId: file.publicId,
+        reason: error instanceof Error ? error.message : "unknown",
+      });
+    });
+  }
+  for (const image of existing.images) {
+    if (!image.publicId) continue;
+    await destroyCloudinaryAsset({
+      publicId: image.publicId,
+      resourceType: "image",
+      type: "upload",
+    }).catch((error) => {
+      logEvent("cloudinary_cleanup_failed", {
+        publicId: image.publicId,
+        reason: error instanceof Error ? error.message : "unknown",
+      });
+    });
+  }
   await prisma.product.delete({ where: { id: productId } });
   return { ok: true };
 }

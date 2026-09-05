@@ -18,7 +18,7 @@ export const productDraftSchema = z
       .trim()
       .min(40, "Add a fuller description — at least 40 characters."),
     categorySlug: z.string().min(1, "Pick a category."),
-    coverUrl: z.string().min(1, "Add a cover image."),
+    coverUrl: z.string(),
     gallery: z.array(z.string()),
     files: z.array(
       z.object({
@@ -50,13 +50,6 @@ export const productDraftSchema = z
           message: "Suggested price should be at or above the minimum.",
         });
       }
-    }
-    if (value.kind !== "course" && value.files.length === 0) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["files"],
-        message: "Upload at least one file buyers receive.",
-      });
     }
   });
 

@@ -22,6 +22,12 @@ const envSchema = z.object({
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  MAX_PRODUCT_FILE_SIZE_MB: z.coerce.number().int().positive().default(100),
+  MAX_PRODUCT_IMAGE_SIZE_MB: z.coerce.number().int().positive().default(10),
+  CLOUDINARY_DOWNLOAD_TTL_SECONDS: z.coerce.number().int().positive().default(120),
 }).superRefine((value, ctx) => {
   if (value.NODE_ENV !== "production") return;
   if (!value.RAZORPAY_KEY_ID) {
@@ -36,6 +42,15 @@ const envSchema = z.object({
       path: ["RAZORPAY_WEBHOOK_SECRET"],
       message: "Required in production",
     });
+  }
+  if (!value.CLOUDINARY_CLOUD_NAME) {
+    ctx.addIssue({ code: "custom", path: ["CLOUDINARY_CLOUD_NAME"], message: "Required in production" });
+  }
+  if (!value.CLOUDINARY_API_KEY) {
+    ctx.addIssue({ code: "custom", path: ["CLOUDINARY_API_KEY"], message: "Required in production" });
+  }
+  if (!value.CLOUDINARY_API_SECRET) {
+    ctx.addIssue({ code: "custom", path: ["CLOUDINARY_API_SECRET"], message: "Required in production" });
   }
 });
 

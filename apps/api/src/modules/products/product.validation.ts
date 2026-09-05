@@ -1,19 +1,6 @@
 import { Currency, ProductStatus, ProductType } from "@prisma/client";
 import { z } from "zod";
 
-const urlLike = z
-  .string()
-  .trim()
-  .min(1, "Add a cover image.")
-  .max(2000)
-  .refine(
-    (value) =>
-      /^https?:\/\//i.test(value) ||
-      value.startsWith("/") ||
-      value.startsWith("data:"),
-    "Cover image must be a valid URL.",
-  );
-
 export const createProductSchema = z.object({
   title: z.string().trim().min(3, "Title is required.").max(120),
   slug: z
@@ -33,7 +20,20 @@ export const createProductSchema = z.object({
     message: "Product type is invalid.",
   }),
   status: z.nativeEnum(ProductStatus).optional(),
-  coverImage: urlLike,
+  coverImage: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine(
+      (value) =>
+        value === "" ||
+        /^https?:\/\//i.test(value) ||
+        value.startsWith("/") ||
+        value.startsWith("data:"),
+      "Cover image must be a valid URL.",
+    )
+    .optional()
+    .default(""),
   images: z
     .array(
       z.object({
