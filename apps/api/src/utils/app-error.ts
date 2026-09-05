@@ -29,3 +29,11 @@ export function notFound(message = "Not found") {
 export function conflict(message: string) {
   return new AppError(409, message);
 }
+
+export function unprocessable(message: string, errors?: unknown) {
+  return new AppError(422, message, errors);
+}
+
+export function serviceUnavailable(message: string) {
+  return new AppError(503, message);
+}

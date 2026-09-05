@@ -567,6 +567,7 @@ async function main() {
   const order = await prisma.order.create({
     data: {
       customerId: leah.id,
+      subtotal: northline.price,
       totalAmount: northline.price,
       currency: Currency.USD,
       status: "PAID",
@@ -575,6 +576,7 @@ async function main() {
           {
             productId: northline.id,
             creatorId: mira.id,
+            productTitle: northline.title,
             price: northline.price,
             quantity: 1,
           },
@@ -586,7 +588,7 @@ async function main() {
           providerPaymentId: "pay_seed_leah_northline",
           amount: northline.price,
           currency: Currency.USD,
-          status: "SUCCESS",
+          status: "PAID",
         },
       },
     },
@@ -595,6 +597,7 @@ async function main() {
   await prisma.order.create({
     data: {
       customerId: owen.id,
+      subtotal: atlas.price,
       totalAmount: atlas.price,
       currency: Currency.USD,
       status: "PAID",
@@ -603,6 +606,7 @@ async function main() {
           {
             productId: atlas.id,
             creatorId: kenji.id,
+            productTitle: atlas.title,
             price: atlas.price,
             quantity: 1,
           },
@@ -614,7 +618,7 @@ async function main() {
           providerPaymentId: "pay_seed_owen_atlas",
           amount: atlas.price,
           currency: Currency.USD,
-          status: "SUCCESS",
+          status: "PAID",
         },
       },
     },
@@ -623,6 +627,7 @@ async function main() {
   await prisma.order.create({
     data: {
       customerId: sofia.id,
+      subtotal: campaign.price + promptAtelier.price,
       totalAmount: campaign.price + promptAtelier.price,
       currency: Currency.USD,
       status: "PAID",
@@ -631,12 +636,14 @@ async function main() {
           {
             productId: campaign.id,
             creatorId: asha.id,
+            productTitle: campaign.title,
             price: campaign.price,
             quantity: 1,
           },
           {
             productId: promptAtelier.id,
             creatorId: mira.id,
+            productTitle: promptAtelier.title,
             price: promptAtelier.price,
             quantity: 1,
           },
@@ -648,7 +655,7 @@ async function main() {
           providerPaymentId: "pay_seed_sofia_campaign",
           amount: campaign.price + promptAtelier.price,
           currency: Currency.USD,
-          status: "SUCCESS",
+          status: "PAID",
         },
       },
     },
@@ -657,6 +664,7 @@ async function main() {
   await prisma.order.create({
     data: {
       customerId: leah.id,
+      subtotal: campaign.price,
       totalAmount: campaign.price,
       currency: Currency.USD,
       status: "PAID",
@@ -665,6 +673,7 @@ async function main() {
           {
             productId: campaign.id,
             creatorId: asha.id,
+            productTitle: campaign.title,
             price: campaign.price,
             quantity: 1,
           },
@@ -676,10 +685,25 @@ async function main() {
           providerPaymentId: "pay_seed_leah_campaign",
           amount: campaign.price,
           currency: Currency.USD,
-          status: "SUCCESS",
+          status: "PAID",
         },
       },
     },
+  });
+
+  const paidOrders = await prisma.order.findMany({
+    where: { status: "PAID" },
+    include: { items: true },
+  });
+  await prisma.purchase.createMany({
+    data: paidOrders.flatMap((paid) =>
+      paid.items.map((item) => ({
+        userId: paid.customerId,
+        productId: item.productId,
+        orderId: paid.id,
+      })),
+    ),
+    skipDuplicates: true,
   });
 
   await prisma.review.create({

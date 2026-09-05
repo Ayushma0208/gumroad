@@ -22,7 +22,7 @@ const productInclude = {
     select: { id: true, fileName: true, fileSize: true, mimeType: true },
   },
   reviews: { select: { rating: true } },
-  _count: { select: { orderItems: true } },
+  _count: { select: { orderItems: { where: { order: { status: "PAID" as const } } } } },
 } satisfies Prisma.ProductInclude;
 
 function normalizeSort(sort?: string) {

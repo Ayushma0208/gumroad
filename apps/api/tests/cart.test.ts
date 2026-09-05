@@ -12,7 +12,7 @@ const {
   cartItemDelete,
   cartItemDeleteMany,
   productFindUnique,
-  orderItemFindFirst,
+  purchaseFindUnique,
   userFindUnique,
   transaction,
 } = vi.hoisted(() => ({
@@ -24,7 +24,7 @@ const {
   cartItemDelete: vi.fn(),
   cartItemDeleteMany: vi.fn(),
   productFindUnique: vi.fn(),
-  orderItemFindFirst: vi.fn(),
+  purchaseFindUnique: vi.fn(),
   userFindUnique: vi.fn(),
   transaction: vi.fn(),
 }));
@@ -40,7 +40,7 @@ vi.mock("../src/config/database", () => ({
       deleteMany: cartItemDeleteMany,
     },
     product: { findUnique: productFindUnique },
-    orderItem: { findFirst: orderItemFindFirst },
+    purchase: { findUnique: purchaseFindUnique },
     user: { findUnique: userFindUnique },
     $transaction: transaction,
     $connect: vi.fn(),
@@ -129,7 +129,7 @@ describe("cart", () => {
       return fn(tx);
     });
     cartUpsert.mockImplementation(async () => cartRecord([]));
-    orderItemFindFirst.mockResolvedValue(null);
+    purchaseFindUnique.mockResolvedValue(null);
   });
 
   it("rejects unauthenticated access", async () => {
@@ -235,7 +235,7 @@ describe("cart", () => {
   it("rejects a product the customer already purchased", async () => {
     const cookies = session(customer);
     productFindUnique.mockResolvedValue(product());
-    orderItemFindFirst.mockResolvedValue({ id: "oi_1" });
+    purchaseFindUnique.mockResolvedValue({ id: "pur_1" });
 
     const response = await request(app)
       .post("/api/v1/cart/items")

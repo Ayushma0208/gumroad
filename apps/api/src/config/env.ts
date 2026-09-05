@@ -19,8 +19,24 @@ const envSchema = z.object({
   S3_PUBLIC_BASE_URL: z.string().optional(),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+}).superRefine((value, ctx) => {
+  if (value.NODE_ENV !== "production") return;
+  if (!value.RAZORPAY_KEY_ID) {
+    ctx.addIssue({ code: "custom", path: ["RAZORPAY_KEY_ID"], message: "Required in production" });
+  }
+  if (!value.RAZORPAY_KEY_SECRET) {
+    ctx.addIssue({ code: "custom", path: ["RAZORPAY_KEY_SECRET"], message: "Required in production" });
+  }
+  if (!value.RAZORPAY_WEBHOOK_SECRET) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["RAZORPAY_WEBHOOK_SECRET"],
+      message: "Required in production",
+    });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,37 +1,16 @@
 import type { Metadata } from "next";
-import { SearchX } from "lucide-react";
-import { EmptyState } from "@/components/layout/empty-state";
 import { CheckoutExperience } from "@/components/checkout/checkout-experience";
-import { productToCheckoutLine } from "@/lib/api/checkout";
-import { getProductBySlug } from "@/lib/api/products";
+import { ProtectedLayout } from "@/components/auth/protected-layout";
 
 export const metadata: Metadata = {
   title: "Checkout",
-  description: "Review your Lumen order. Razorpay checkout will connect here.",
+  description: "Pay securely with Razorpay. Orders are marked paid only after server verification.",
 };
 
-type CheckoutPageProps = {
-  searchParams: Promise<{ product?: string }>;
-};
-
-export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
-  const { product: slug } = await searchParams;
-  const product = slug ? await getProductBySlug(slug) : null;
-  if (slug && !product) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="This product is not on the shelf"
-        description="The checkout link is missing a product we can sell. Head back to Discover and pick something else."
-        actionHref="/discover"
-        actionLabel="Back to Discover"
-      />
-    );
-  }
-
+export default function CheckoutPage() {
   return (
-    <CheckoutExperience
-      preset={product ? productToCheckoutLine(product) : null}
-    />
+    <ProtectedLayout>
+      <CheckoutExperience />
+    </ProtectedLayout>
   );
 }

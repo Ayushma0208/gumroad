@@ -45,14 +45,11 @@ export async function getCartForCustomer(customerId: string): Promise<CartDto> {
 }
 
 async function assertNotOwned(customerId: string, productId: string) {
-  const owned = await prisma.orderItem.findFirst({
-    where: {
-      productId,
-      order: { customerId, status: "PAID" },
-    },
+  const purchase = await prisma.purchase.findUnique({
+    where: { userId_productId: { userId: customerId, productId } },
     select: { id: true },
   });
-  if (owned) {
+  if (purchase) {
     throw conflict("You already own this product.");
   }
 }

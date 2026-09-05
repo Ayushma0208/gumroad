@@ -1,53 +1,105 @@
-import type { Product } from "@/types/catalog";
-import { formatPrice } from "@/lib/format";
+import { requestJson } from "@/lib/api/http";
 
-/**
- * Checkout currently prepares a draft intent from mock catalog data.
- * Swap `createCheckoutIntent` to POST /payments/orders once Razorpay is live.
- */
-export type CheckoutLine = {
-  productId: string;
-  slug: string;
-  title: string;
-  priceCents: number;
-  currency: Product["currency"];
-  imageUrl: string;
+export type CheckoutSession = {
+  orderId: string;
+  razorpayOrderId: string;
+  amount: number;
+  currency: "USD" | "INR";
+  keyId: string;
 };
 
-export type CheckoutIntent = {
+export type RazorpayCheckoutResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+export type PublicOrderItem = {
   id: string;
-  provider: "razorpay";
-  status: "draft";
-  items: CheckoutLine[];
-  totalCents: number;
-  currency: Product["currency"];
-  note: string;
+  productId: string;
+  productTitle: string;
+  price: number;
+  priceCents: number;
+  quantity: number;
+  product: {
+    slug: string;
+    coverImage: string;
+    productType: string;
+    creator: { storeName: string; slug: string };
+  };
 };
 
-export async function createCheckoutIntent(
-  items: CheckoutLine[],
-): Promise<CheckoutIntent> {
-  const totalCents = items.reduce((sum, item) => sum + item.priceCents, 0);
-  const currency = items[0]?.currency ?? "USD";
+export type PublicOrder = {
+  id: string;
+  status: "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "REFUNDED";
+  subtotal: number;
+  subtotalCents: number;
+  discount: number;
+  discountCents: number;
+  total: number;
+  totalCents: number;
+  currency: "USD" | "INR";
+  createdAt: string;
+  updatedAt: string;
+  items: PublicOrderItem[];
+  payment: {
+    id: string;
+    status: string;
+    provider: string;
+    amount: number;
+    amountCents: number;
+    currency: "USD" | "INR";
+  } | null;
+};
 
-  return {
-    id: `draft_${Date.now()}`,
-    provider: "razorpay",
-    status: "draft",
-    items,
-    totalCents,
-    currency,
-    note: `Order total ${formatPrice(totalCents, currency)}. Razorpay checkout is not connected yet.`,
+export type PurchaseRecord = {
+  id: string;
+  productId: string;
+  orderId: string;
+  createdAt: string;
+  product: {
+    id: string;
+    title: string;
+    slug: string;
+    coverImage: string;
+    productType: string;
+    creator: { storeName: string; slug: string };
   };
+};
+
+export function createCheckoutOrder() {
+  return requestJson<CheckoutSession>("/api/v1/checkout/create-order", {
+    method: "POST",
+  });
 }
 
-export function productToCheckoutLine(product: Product): CheckoutLine {
-  return {
-    productId: product.id,
-    slug: product.slug,
-    title: product.title,
-    priceCents: product.priceCents,
-    currency: product.currency,
-    imageUrl: product.imageUrl,
+export function verifyRazorpayPayment(input: RazorpayCheckoutResponse) {
+  return requestJson<{ order: PublicOrder }>("/api/v1/payments/razorpay/verify", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export function getOrders() {
+  return requestJson<{ orders: PublicOrder[] }>("/api/v1/orders");
+}
+
+export function getOrder(orderId: string) {
+  return requestJson<{ order: PublicOrder }>(
+    `/api/v1/orders/${encodeURIComponent(orderId)}`,
+  );
+}
+
+export function getPurchases() {
+  return requestJson<{ purchases: PurchaseRecord[] }>("/api/v1/orders/purchases");
+}
+
+export function catalogProductTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    DIGITAL_DOWNLOAD: "Digital download",
+    COURSE: "Course",
+    TEMPLATE: "Template",
+    BUNDLE: "Bundle",
   };
+  return labels[type] ?? type.replaceAll("_", " ").toLowerCase();
 }

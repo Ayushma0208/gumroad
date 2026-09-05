@@ -32,7 +32,7 @@ export function ProductPurchaseCard({
     startBuy(async () => {
       const added = await addToCart({ silent: true });
       if (added || inCart) {
-        router.push(`/checkout?product=${product.slug}`);
+        router.push("/checkout");
       }
     });
   }

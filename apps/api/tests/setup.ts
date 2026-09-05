@@ -5,3 +5,6 @@ process.env.JWT_SECRET = "test-jwt-secret-that-is-at-least-32ch";
 process.env.JWT_EXPIRES_IN = "1d";
 process.env.CLIENT_URL = "http://localhost:3000";
 process.env.COOKIE_NAME = "lumen_session";
+process.env.RAZORPAY_KEY_ID = "rzp_test_lumen";
+process.env.RAZORPAY_KEY_SECRET = "test_razorpay_key_secret_value";
+process.env.RAZORPAY_WEBHOOK_SECRET = "test_razorpay_webhook_secret";
