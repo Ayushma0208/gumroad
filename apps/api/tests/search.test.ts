@@ -7,6 +7,7 @@ const {
   productGroupBy,
   categoryFindMany,
   creatorFindMany,
+  reviewGroupBy,
   transaction,
 } = vi.hoisted(() => ({
   productFindMany: vi.fn(),
@@ -14,6 +15,7 @@ const {
   productGroupBy: vi.fn(),
   categoryFindMany: vi.fn(),
   creatorFindMany: vi.fn(),
+  reviewGroupBy: vi.fn(),
   transaction: vi.fn(),
 }));
 
@@ -39,6 +41,7 @@ vi.mock("../src/config/database", () => ({
     },
     category: { findMany: categoryFindMany },
     creatorProfile: { findMany: creatorFindMany },
+    review: { groupBy: reviewGroupBy },
     $transaction: transaction,
     $connect: vi.fn(),
   },
@@ -109,6 +112,7 @@ function publishedProduct(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  reviewGroupBy.mockResolvedValue([]);
   transaction.mockImplementation(async (arg: unknown) => {
     if (Array.isArray(arg)) return Promise.all(arg);
     if (typeof arg === "function") return arg({});

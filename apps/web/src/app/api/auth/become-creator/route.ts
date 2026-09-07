@@ -2,9 +2,16 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { becomeCreatorSchema } from "@/lib/auth/schema";
 import { becomeCreator, getSessionUser } from "@/lib/mock/auth-db";
-import { jsonError, SESSION_COOKIE } from "@/app/api/auth/_shared";
+import {
+  jsonError,
+  mockAuthForbidden,
+  SESSION_COOKIE,
+} from "@/app/api/auth/_shared";
 
 export async function POST(request: Request) {
+  const blocked = mockAuthForbidden();
+  if (blocked) return blocked;
+
   const jar = await cookies();
   const current = getSessionUser(jar.get(SESSION_COOKIE)?.value);
   if (!current) {

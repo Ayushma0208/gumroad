@@ -382,3 +382,47 @@ export async function moderateReview(reviewId: string, status: ReviewStatus) {
   });
   return serializePublicReview(updated, { verified: true, includeStatus: true });
 }
+
+export async function listMyReviews(
+  userId: string,
+  query: { page?: number; limit?: number } = {},
+) {
+  const pagination = parsePagination(query.page, query.limit ?? 20);
+  const where = { userId };
+  const [total, reviews] = await prisma.$transaction([
+    prisma.review.count({ where }),
+    prisma.review.findMany({
+      where,
+      include: {
+        ...reviewInclude,
+        product: { select: { id: true, title: true, slug: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      ...skipTake(pagination),
+    }),
+  ]);
+
+  const productIds = [...new Set(reviews.map((review) => review.productId))];
+  const purchases =
+    productIds.length === 0
+      ? []
+      : await prisma.purchase.findMany({
+          where: {
+            userId,
+            productId: { in: productIds },
+            order: { status: "PAID" },
+          },
+          select: { productId: true },
+        });
+  const owned = new Set(purchases.map((row) => row.productId));
+
+  return {
+    items: reviews.map((review) =>
+      serializePublicReview(review, {
+        verified: owned.has(review.productId),
+        includeStatus: true,
+      }),
+    ),
+    pagination: paginationMeta(pagination.page, pagination.limit, total),
+  };
+}

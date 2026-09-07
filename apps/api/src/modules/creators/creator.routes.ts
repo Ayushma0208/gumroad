@@ -19,6 +19,7 @@ import {
   uploadBannerMiddleware,
 } from "../media/upload.middleware";
 import { analyticsRouter } from "../analytics/analytics.routes";
+import { earningsRouter, payoutsRouter } from "../payouts/payout.routes";
 import {
   checkSlug,
   getBySlug,
@@ -41,6 +42,8 @@ export const creatorRouter = Router();
 
 /** Creator analytics — must be registered before `/:slug`. */
 creatorRouter.use("/me/analytics", analyticsRouter);
+creatorRouter.use("/me/earnings", earningsRouter);
+creatorRouter.use("/me/payouts", payoutsRouter);
 
 creatorRouter.get(
   "/",

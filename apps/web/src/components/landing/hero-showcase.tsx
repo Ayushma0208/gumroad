@@ -3,19 +3,34 @@
 import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useFeaturedCatalog } from "@/hooks/use-catalog";
 import { formatPrice } from "@/lib/format";
-import { featuredCreators, getFeaturedProducts } from "@/lib/mock/catalog";
 import { creatorPath, productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
-
-const products = getFeaturedProducts().slice(0, 3);
-const creator = featuredCreators[0];
+import type { Product } from "@/types/catalog";
 
 export function HeroShowcase() {
+  const featured = useFeaturedCatalog();
   const reduceMotion = useReducedMotion();
+  const products = (featured.data ?? []).slice(0, 3);
   const [lead, second, third] = products;
-  // Keep SSR readable — never start at opacity 0 (blank homepage before hydrate).
+  const creator = lead?.creator;
   const enter = reduceMotion ? undefined : { opacity: 0.96, y: 18 };
+
+  if (featured.isPending) {
+    return (
+      <div
+        className="grid min-h-[18rem] gap-3 sm:grid-cols-[1.15fr_0.85fr] sm:gap-4"
+        aria-hidden
+      >
+        <div className="animate-pulse rounded-xl bg-muted" />
+        <div className="grid gap-3 sm:gap-4">
+          <div className="animate-pulse rounded-xl bg-muted" />
+          <div className="animate-pulse rounded-xl bg-muted" />
+        </div>
+      </div>
+    );
+  }
 
   if (!lead || !second || !third || !creator) {
     return null;
@@ -50,17 +65,21 @@ export function HeroShowcase() {
             className="absolute -bottom-3 left-3 flex items-center gap-2 rounded-full border border-border bg-card py-1.5 pr-3 pl-1.5 shadow-sm sm:left-4"
           >
             <span className="relative size-7 overflow-hidden rounded-full">
-              <Image
-                src={creator.avatarUrl}
-                alt=""
-                fill
-                sizes="28px"
-                className="object-cover"
-              />
+              {creator.avatarUrl ? (
+                <Image
+                  src={creator.avatarUrl}
+                  alt=""
+                  fill
+                  sizes="28px"
+                  className="object-cover"
+                />
+              ) : (
+                <span className="block size-full bg-muted" />
+              )}
             </span>
             <span className="pr-1 text-xs">
               <span className="block font-medium">{creator.name}</span>
-              <span className="text-muted-foreground">just published</span>
+              <span className="text-muted-foreground">featured maker</span>
             </span>
           </Link>
         </motion.div>
@@ -74,7 +93,7 @@ function ShowcaseCard({
   className,
   priority = false,
 }: {
-  product: (typeof products)[number];
+  product: Product;
   className?: string;
   priority?: boolean;
 }) {
@@ -84,14 +103,16 @@ function ShowcaseCard({
       className="group relative block overflow-hidden rounded-xl bg-muted"
     >
       <span className={cn("relative block", className)}>
-        <Image
-          src={product.imageUrl}
-          alt={product.title}
-          fill
-          priority={priority}
-          sizes="(max-width: 1024px) 90vw, 480px"
-          className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-        />
+        {product.imageUrl ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.title}
+            fill
+            priority={priority}
+            sizes="(max-width: 1024px) 90vw, 480px"
+            className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+          />
+        ) : null}
       </span>
       <span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent p-3 sm:p-4">
         <span className="block text-sm font-medium text-white">{product.title}</span>

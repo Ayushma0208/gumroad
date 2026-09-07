@@ -4,8 +4,10 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env";
+import { requireCsrfHeader } from "./middleware/csrf.middleware";
 import { errorMiddleware } from "./middleware/error.middleware";
 import { notFoundMiddleware } from "./middleware/not-found.middleware";
+import { requestTimingMiddleware } from "./middleware/request-timing.middleware";
 import { asyncHandler } from "./utils/async-handler";
 import { adminRouter } from "./modules/admin/admin.routes";
 import { authRouter } from "./modules/auth/auth.routes";
@@ -32,22 +34,42 @@ import { searchRouter } from "./modules/search/search.routes";
 
 export function createApp() {
   const app = express();
+  const production = env.NODE_ENV === "production";
 
   app.disable("x-powered-by");
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      hsts: production ? { maxAge: 15_552_000, includeSubDomains: true } : false,
+      referrerPolicy: { policy: "no-referrer" },
+    }),
+  );
   app.use(
     cors({
       origin: env.CLIENT_URL,
       credentials: true,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: [
+        "Content-Type",
+        "X-Lumen-Client",
+        "Idempotency-Key",
+      ],
     }),
   );
+
+  // Signature-verified webhook — mounted before JSON parser and CSRF.
   app.post(
     "/api/v1/payments/razorpay/webhook",
     express.raw({ type: "application/json" }),
     asyncHandler(webhook),
   );
+
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
+  app.use(requireCsrfHeader);
+  app.use(requestTimingMiddleware);
+
   if (env.NODE_ENV !== "test") {
     app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
   }

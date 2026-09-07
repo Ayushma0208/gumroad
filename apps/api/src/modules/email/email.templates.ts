@@ -150,3 +150,84 @@ export function renderProductStatus(payload: ProductStatusEmailPayload) {
   ].join("\n");
   return { subject: `${payload.statusLabel}: ${payload.productTitle}`, html, text };
 }
+
+export type PayoutEmailPayload = {
+  creatorName: string;
+  amountLabel: string;
+  reference: string;
+  statusLabel: string;
+  payoutsUrl: string;
+  reason?: string;
+};
+
+export function renderPayoutRequested(payload: PayoutEmailPayload) {
+  const html = layout(
+    "Payout requested",
+    `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(payload.creatorName)}, we received your payout request.</p>
+     <p style="margin:0;line-height:1.5;">${escapeHtml(payload.amountLabel)} · Ref ${escapeHtml(payload.reference)} · ${escapeHtml(payload.statusLabel)}</p>
+     <p style="margin:12px 0 0;line-height:1.5;color:#52525b;">This is not a confirmation that funds have been sent.</p>`,
+    { label: "View payout", href: payload.payoutsUrl },
+  );
+  const text = [
+    "Payout requested",
+    `${payload.amountLabel} · ${payload.reference} · ${payload.statusLabel}`,
+    "This is not a confirmation that funds have been sent.",
+    payload.payoutsUrl,
+  ].join("\n");
+  return { subject: "Payout requested", html, text };
+}
+
+export function renderPayoutPaid(payload: PayoutEmailPayload) {
+  const html = layout(
+    "Payout completed",
+    `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(payload.creatorName)}, your payout was marked paid.</p>
+     <p style="margin:0;line-height:1.5;">${escapeHtml(payload.amountLabel)} · Ref ${escapeHtml(payload.reference)}</p>`,
+    { label: "View payout", href: payload.payoutsUrl },
+  );
+  const text = [
+    "Payout completed",
+    `${payload.amountLabel} · ${payload.reference}`,
+    payload.payoutsUrl,
+  ].join("\n");
+  return { subject: "Payout completed", html, text };
+}
+
+export function renderPayoutFailed(payload: PayoutEmailPayload) {
+  const reason = payload.reason ?? "The payout could not be completed.";
+  const html = layout(
+    "Payout failed",
+    `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(payload.creatorName)}, your payout could not be completed.</p>
+     <p style="margin:0 0 12px;line-height:1.5;">${escapeHtml(payload.amountLabel)} · Ref ${escapeHtml(payload.reference)}</p>
+     <p style="margin:0;line-height:1.5;color:#52525b;">${escapeHtml(reason)} Your available balance was restored.</p>`,
+    { label: "View payout", href: payload.payoutsUrl },
+  );
+  const text = [
+    "Payout failed",
+    `${payload.amountLabel} · ${payload.reference}`,
+    reason,
+    "Your available balance was restored.",
+    payload.payoutsUrl,
+  ].join("\n");
+  return { subject: "Payout failed", html, text };
+}
+
+export type PayoutAccountEmailPayload = {
+  creatorName: string;
+  statusLabel: string;
+  settingsUrl: string;
+};
+
+export function renderPayoutAccountUpdate(payload: PayoutAccountEmailPayload) {
+  const html = layout(
+    "Payout account update",
+    `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(payload.creatorName)}, your payout account was ${escapeHtml(payload.statusLabel)}.</p>
+     <p style="margin:0;line-height:1.5;color:#52525b;">We never email full bank credentials.</p>`,
+    { label: "Payout settings", href: payload.settingsUrl },
+  );
+  const text = [
+    "Payout account update",
+    `Status: ${payload.statusLabel}`,
+    payload.settingsUrl,
+  ].join("\n");
+  return { subject: "Payout account update", html, text };
+}

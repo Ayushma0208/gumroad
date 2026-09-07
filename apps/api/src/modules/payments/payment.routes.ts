@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.middleware";
 import { requireRole } from "../../middleware/role.middleware";
+import { createRateLimiter } from "../../middleware/rate-limit.middleware";
 import { validateBody } from "../../middleware/validation.middleware";
 import { asyncHandler } from "../../utils/async-handler";
 import { env } from "../../config/env";
@@ -10,10 +11,17 @@ import { verifyRazorpaySchema } from "./payment.validation";
 
 export const paymentRouter = Router();
 
+const verifyLimit = createRateLimiter({
+  windowMs: 60_000,
+  max: 30,
+  keyPrefix: "payment-verify",
+});
+
 paymentRouter.post(
   "/razorpay/verify",
   requireAuth,
-  requireRole("CUSTOMER"),
+  requireRole("CUSTOMER", "CREATOR"),
+  verifyLimit,
   validateBody(verifyRazorpaySchema),
   asyncHandler(verify),
 );

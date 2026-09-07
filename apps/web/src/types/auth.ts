@@ -14,7 +14,9 @@ export type AuthUser = {
   name: string;
   email: string;
   role: UserRole;
+  status?: "ACTIVE" | "SUSPENDED";
   avatarUrl?: string | null;
+  createdAt?: string;
   creatorProfile?: CreatorStoreProfile | null;
 };
 

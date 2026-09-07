@@ -5,8 +5,14 @@ import {
   parsePagination,
 } from "../../utils/pagination";
 import { serializePublicCreator } from "../creators/creator.types";
-import { listPublishedProducts } from "../products/product.service";
-import { serializeProduct } from "../products/product.types";
+import {
+  listPublishedProducts,
+  productListInclude,
+} from "../products/product.service";
+import {
+  loadReviewStatsForProducts,
+  serializeProductList,
+} from "../products/product.types";
 import type { SearchQuery, SuggestQuery } from "./search.schema";
 
 /** Deterministic relevance: higher is better. Testable scoring. */
@@ -80,29 +86,24 @@ function productSearchWhere(q: string): Prisma.ProductWhereInput {
   };
 }
 
-const listInclude = {
-  category: true,
+/** Slim fields for in-memory relevance scoring — no images/files/reviews. */
+const relevanceCandidateSelect = {
+  id: true,
+  title: true,
+  slug: true,
+  shortDescription: true,
+  description: true,
+  productType: true,
   creator: {
-    include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+    select: { storeName: true, displayName: true, slug: true },
   },
-  images: { orderBy: { sortOrder: "asc" as const } },
-  files: {
-    select: {
-      id: true,
-      fileName: true,
-      fileSize: true,
-      mimeType: true,
-      format: true,
-    },
-  },
-  reviews: { where: { status: "PUBLISHED" as const }, select: { rating: true } },
+  category: { select: { label: true, slug: true } },
   _count: {
     select: {
-      files: true,
       orderItems: { where: { order: { status: "PAID" as const } } },
     },
   },
-} satisfies Prisma.ProductInclude;
+} satisfies Prisma.ProductSelect;
 
 /**
  * Unified marketplace search: products (paginated) + creator/category hits.
@@ -186,16 +187,16 @@ async function listProductsByRelevance(input: {
       : {}),
   };
 
-  // Cap candidate set for scoring; still respects filters.
+  // Cap candidate set for scoring; hydrate only the page slice for cards.
   const candidates = await prisma.product.findMany({
     where,
-    include: listInclude,
+    select: relevanceCandidateSelect,
     take: 250,
   });
 
   let ranked = candidates
     .map((product) => ({
-      product,
+      id: product.id,
       score: scoreProductRelevance(input.q, product),
       sales: product._count.orderItems,
     }))
@@ -203,22 +204,36 @@ async function listProductsByRelevance(input: {
     .sort((a, b) => b.score - a.score || b.sales - a.sales);
 
   if (input.minRating && input.minRating > 0) {
+    const stats = await loadReviewStatsForProducts(ranked.map((row) => row.id));
     ranked = ranked.filter((row) => {
-      const ratings = row.product.reviews.map((r) => r.rating);
-      if (ratings.length === 0) return false;
-      const avg = ratings.reduce((s, v) => s + v, 0) / ratings.length;
-      return avg >= (input.minRating ?? 0);
+      const review = stats.get(row.id);
+      return Boolean(review && review.rating >= (input.minRating ?? 0));
     });
   }
 
   const total = ranked.length;
-  const slice = ranked.slice(
-    (input.page - 1) * input.limit,
-    input.page * input.limit,
-  );
+  const pageIds = ranked
+    .slice((input.page - 1) * input.limit, input.page * input.limit)
+    .map((row) => row.id);
+
+  if (pageIds.length === 0) {
+    return {
+      items: [],
+      pagination: paginationMeta(input.page, input.limit, total),
+    };
+  }
+
+  const products = await prisma.product.findMany({
+    where: { id: { in: pageIds } },
+    include: productListInclude,
+  });
+  const byId = new Map(products.map((product) => [product.id, product]));
+  const ordered = pageIds
+    .map((id) => byId.get(id))
+    .filter((product): product is NonNullable<typeof product> => Boolean(product));
 
   return {
-    items: slice.map((row) => serializeProduct(row.product)),
+    items: await serializeProductList(ordered),
     pagination: paginationMeta(input.page, input.limit, total),
   };
 }

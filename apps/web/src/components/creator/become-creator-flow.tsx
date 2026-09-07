@@ -9,9 +9,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FadeInOnLoad } from "@/components/motion/fade-in";
 import { useBecomeCreatorMutation, useStoreSlugAvailability } from "@/hooks/use-auth";
+import { useCatalogCategories } from "@/hooks/use-catalog";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ApiError } from "@/lib/api/client";
-import { getCategories } from "@/lib/api/products";
 import {
   creatorProfileSchema,
   storeSetupSchema,
@@ -29,7 +29,8 @@ export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
   const router = useRouter();
   const become = useBecomeCreatorMutation();
   const showToast = useToastStore((state) => state.show);
-  const categories = getCategories();
+  const categoriesQuery = useCatalogCategories();
+  const categories = categoriesQuery.data ?? [];
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<

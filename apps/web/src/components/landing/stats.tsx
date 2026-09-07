@@ -1,11 +1,9 @@
 import { Container } from "@/components/layout/container";
-import { trustStats } from "@/lib/mock/landing";
+
+const credibilityLine =
+  "Independent studios  ·  Secure checkout  ·  Instant delivery  ·  Owned audiences";
 
 export function LandingStats() {
-  const line = trustStats
-    .map((stat) => `${stat.value} ${stat.label}`)
-    .join("  ·  ");
-
   return (
     <section
       aria-label="Platform credibility"
@@ -13,8 +11,8 @@ export function LandingStats() {
     >
       <Container>
         <p className="max-w-3xl font-display text-2xl leading-snug tracking-tight text-balance sm:text-3xl">
-          Trusted by independent studios in sixty-four countries — without
-          turning their buyers into inventory.
+          Built for makers who want a storefront — without turning their buyers
+          into inventory.
         </p>
       </Container>
       <div className="mt-8 overflow-hidden border-t border-border pt-5">
@@ -25,9 +23,9 @@ export function LandingStats() {
               className="px-6 font-mono text-xs tracking-[0.18em] text-muted-foreground uppercase sm:text-[0.8rem]"
               aria-hidden={copy === 1}
             >
-              {line}
+              {credibilityLine}
               <span className="px-8">·</span>
-              {line}
+              {credibilityLine}
               <span className="px-8">·</span>
             </p>
           ))}

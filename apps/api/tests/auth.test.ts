@@ -29,12 +29,16 @@ function publicUser(overrides: {
   email?: string;
   role?: Role;
   passwordHash?: string;
+  status?: "ACTIVE" | "SUSPENDED";
+  sessionVersion?: number;
 } = {}) {
   return {
     id: overrides.id ?? "u_1",
     name: "Leah Okonkwo",
     email: overrides.email ?? "leah@example.com",
     role: overrides.role ?? "CUSTOMER",
+    status: overrides.status ?? "ACTIVE",
+    sessionVersion: overrides.sessionVersion ?? 0,
     avatarUrl: null,
     passwordHash: overrides.passwordHash,
     creatorProfile: null,
@@ -48,7 +52,11 @@ describe("auth", () => {
   });
 
   it("registers a customer and sets a session cookie", async () => {
-    userFindUnique.mockResolvedValue(null);
+    userFindUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(
+        publicUser({ status: "ACTIVE", sessionVersion: 0 }),
+      );
     userCreate.mockResolvedValue(publicUser());
 
     const response = await request(app).post("/api/v1/auth/register").send({
@@ -75,10 +83,23 @@ describe("auth", () => {
       name: "Leah Okonkwo",
       email: "leah@example.com",
       password,
+      confirmPassword: password,
+      terms: true,
     });
 
     expect(response.status).toBe(409);
     expect(response.body.success).toBe(false);
+  });
+
+  it("rejects register without matching confirmation", async () => {
+    const response = await request(app).post("/api/v1/auth/register").send({
+      name: "Leah Okonkwo",
+      email: "leah@example.com",
+      password,
+      confirmPassword: "otherpass1",
+      terms: true,
+    });
+    expect(response.status).toBe(400);
   });
 
   it("logs in with valid credentials", async () => {
@@ -111,10 +132,7 @@ describe("auth", () => {
   it("returns the current user from /me", async () => {
     const passwordHash = await bcrypt.hash(password, 4);
     const stored = publicUser({ passwordHash });
-    userFindUnique
-      .mockResolvedValueOnce(stored)
-      .mockResolvedValueOnce(stored)
-      .mockResolvedValueOnce(stored);
+    userFindUnique.mockResolvedValue(stored);
 
     const login = await request(app).post("/api/v1/auth/login").send({
       email: "leah@example.com",
@@ -199,7 +217,7 @@ describe("health", () => {
   it("returns a healthy payload", async () => {
     const response = await request(app).get("/api/v1/health");
     expect(response.status).toBe(200);
-    expect(response.body.data.status).toBe("healthy");
-    expect(response.body.data.service).toBe("creator-marketplace-api");
+    expect(response.body.data.status).toBe("ok");
+    expect(response.body.data.service).toBe("lumen-api");
   });
 });

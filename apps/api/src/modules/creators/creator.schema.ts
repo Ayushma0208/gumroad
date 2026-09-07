@@ -28,25 +28,6 @@ export const storeSlugSchema = z
   )
   .refine((slug) => !RESERVED_STORE_SLUGS.has(slug), "That store URL is reserved.");
 
-export const onboardCreatorSchema = z.object({
-  displayName: z.string().trim().min(2, "Enter a display name."),
-  storeName: z.string().trim().min(2, "Enter a store name."),
-  bio: z
-    .string()
-    .trim()
-    .min(20, "Give people a little more — at least 20 characters.")
-    .max(280, "Keep the bio under 280 characters."),
-  slug: storeSlugSchema,
-  category: z.string().min(1, "Pick a category."),
-  avatarUrl: z.string().optional(),
-});
-
-export type OnboardCreatorInput = z.infer<typeof onboardCreatorSchema>;
-
-export const slugQuerySchema = z.object({
-  slug: z.string().trim().min(1),
-});
-
 const emptyToNull = (value: unknown) => {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -71,6 +52,25 @@ const optionalHttpUrl = z.preprocess(
     ])
     .optional(),
 );
+
+export const onboardCreatorSchema = z.object({
+  displayName: z.string().trim().min(2, "Enter a display name."),
+  storeName: z.string().trim().min(2, "Enter a store name."),
+  bio: z
+    .string()
+    .trim()
+    .min(20, "Give people a little more — at least 20 characters.")
+    .max(280, "Keep the bio under 280 characters."),
+  slug: storeSlugSchema,
+  category: z.string().min(1, "Pick a category."),
+  avatarUrl: optionalHttpUrl,
+});
+
+export type OnboardCreatorInput = z.infer<typeof onboardCreatorSchema>;
+
+export const slugQuerySchema = z.object({
+  slug: z.string().trim().min(1),
+});
 
 const optionalText = (max: number) =>
   z.preprocess(

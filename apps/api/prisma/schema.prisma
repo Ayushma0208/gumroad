@@ -107,18 +107,54 @@ enum AdminAuditAction {
   CATEGORY_DELETED
   CREATOR_SUSPENDED
   CREATOR_RESTORED
+  PAYOUT_MARKED_PROCESSING
+  PAYOUT_MARKED_PAID
+  PAYOUT_MARKED_FAILED
+  PAYOUT_ACCOUNT_VERIFIED
+  PAYOUT_ACCOUNT_DISABLED
+}
+
+enum CreatorEarningStatus {
+  PENDING
+  AVAILABLE
+  RESERVED
+  PAID
+  REVERSED
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum PayoutProvider {
+  /// Ops settles outside the app (bank transfer / manual). No simulated auto-pay.
+  MANUAL_REVIEW
+}
+
+enum PayoutAccountStatus {
+  NOT_CONFIGURED
+  PENDING_REVIEW
+  VERIFIED
+  DISABLED
 }
 
 model User {
-  id           String     @id @default(cuid())
-  name         String
-  email        String     @unique
-  passwordHash String
-  role         Role       @default(CUSTOMER)
-  status       UserStatus @default(ACTIVE)
-  avatarUrl    String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id             String     @id @default(cuid())
+  name           String
+  email          String     @unique
+  passwordHash   String
+  role           Role       @default(CUSTOMER)
+  status         UserStatus @default(ACTIVE)
+  /// Bumped on password change, account close, and admin suspend to invalidate JWTs.
+  sessionVersion Int        @default(0)
+  avatarUrl      String?
+  avatarPublicId String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   creatorProfile    CreatorProfile?
   cart              Cart?
@@ -167,6 +203,9 @@ model CreatorProfile {
   products      Product[]
   reviewReplies ReviewReply[]
   coupons       Coupon[]
+  earnings      CreatorEarning[]
+  payouts       Payout[]
+  payoutAccount CreatorPayoutAccount?
 
   @@index([slug])
 }
@@ -219,6 +258,7 @@ model Product {
   downloads     Download[]
   wishlistItems WishlistItem[]
   couponProducts CouponProduct[]
+  earnings       CreatorEarning[]
 
   @@index([creatorId])
   @@index([categoryId])
@@ -327,6 +367,7 @@ model Order {
   downloads   Download[]
   reviews     Review[]
   couponRedemption CouponRedemption?
+  earnings         CreatorEarning[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -335,6 +376,7 @@ model Order {
   @@index([createdAt])
   @@index([status, createdAt])
   @@index([customerId, status])
+  @@index([customerId, createdAt])
   @@index([checkoutKey])
   @@index([couponId])
 }
@@ -349,6 +391,7 @@ model OrderItem {
   quantity     Int     @default(1)
   order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product      Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  earning      CreatorEarning?
 
   @@index([orderId])
   @@index([productId])
@@ -554,6 +597,10 @@ enum NotificationType {
   PRODUCT_UNPUBLISHED
   PRODUCT_ARCHIVED
   ACCOUNT_UPDATE
+  PAYOUT_REQUESTED
+  PAYOUT_PAID
+  PAYOUT_FAILED
+  PAYOUT_ACCOUNT_UPDATE
 }
 
 enum EmailJobStatus {
@@ -568,6 +615,100 @@ enum EmailTemplate {
   CREATOR_SALE
   REVIEW_RECEIVED
   PRODUCT_STATUS
+  PAYOUT_REQUESTED
+  PAYOUT_PAID
+  PAYOUT_FAILED
+  PAYOUT_ACCOUNT_UPDATE
+}
+
+/// Append-mostly creator earnings ledger row (one SALE credit per paid OrderItem).
+model CreatorEarning {
+  id                   String               @id @default(cuid())
+  creatorId            String
+  creator              CreatorProfile       @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  orderId              String
+  order                Order                @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderItemId          String               @unique
+  orderItem            OrderItem            @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  productId            String
+  product              Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  currency             Currency
+  grossAmountCents     Int
+  discountAmountCents  Int
+  netSalesCents        Int
+  platformFeeCents     Int
+  /// Fee rate snapshot at posting time (basis points). History stays correct if config changes.
+  platformFeeBps       Int
+  processingFeeCents   Int                  @default(0)
+  creatorAmountCents   Int
+  status               CreatorEarningStatus
+  availableAt          DateTime
+  /// Deterministic idempotency: earning:orderItem:{orderItemId}
+  ledgerKey            String               @unique
+  reversesEarningId    String?
+  reversesEarning      CreatorEarning?      @relation("EarningReversals", fields: [reversesEarningId], references: [id], onDelete: Restrict)
+  reversedBy           CreatorEarning[]     @relation("EarningReversals")
+  payoutItem           PayoutItem?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([creatorId, createdAt])
+  @@index([creatorId, status])
+  @@index([orderId])
+  @@index([productId])
+  @@index([creatorId, status, availableAt])
+  @@index([availableAt])
+}
+
+/// Minimal payout profile metadata — never store bank passwords / CVV / full credentials.
+model CreatorPayoutAccount {
+  id                 String              @id @default(cuid())
+  creatorId          String              @unique
+  creator            CreatorProfile      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  status             PayoutAccountStatus @default(NOT_CONFIGURED)
+  provider           PayoutProvider      @default(MANUAL_REVIEW)
+  accountHolderName  String?
+  /// Masked display hint only (e.g. last 4), never full account numbers when avoidable.
+  accountHint        String?
+  providerAccountId  String?
+  verifiedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model Payout {
+  id               String         @id @default(cuid())
+  creatorId        String
+  creator          CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  amountCents      Int
+  currency         Currency
+  status           PayoutStatus
+  provider         PayoutProvider @default(MANUAL_REVIEW)
+  providerPayoutId String?        @unique
+  failureCode      String?
+  failureMessage   String?
+  idempotencyKey   String         @unique
+  requestedAt      DateTime       @default(now())
+  processedAt      DateTime?
+  items            PayoutItem[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([creatorId, createdAt])
+  @@index([creatorId, status])
+  @@index([status, createdAt])
+}
+
+model PayoutItem {
+  id          String         @id @default(cuid())
+  payoutId    String
+  payout      Payout         @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  earningId   String         @unique
+  earning     CreatorEarning @relation(fields: [earningId], references: [id], onDelete: Restrict)
+  amountCents Int
+  createdAt   DateTime       @default(now())
+
+  @@index([payoutId])
 }
 
 model Notification {

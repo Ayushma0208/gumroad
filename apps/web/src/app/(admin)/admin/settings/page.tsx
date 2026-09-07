@@ -28,8 +28,10 @@ export default function AdminSettingsPage() {
         <section>
           <h2 className="text-base font-medium text-foreground">Platform fees</h2>
           <p className="mt-2">
-            Platform fees are not modeled in this product yet. There is no fee
-            schedule, take rate, or net revenue setting to configure here.
+            Platform fee rate is configurable via <code>PLATFORM_FEE_BPS</code>{" "}
+            (default 0 until finance sets a take rate). Earnings snapshot the BPS
+            used at posting time. Payouts use manual review — Razorpay Route is not
+            integrated.
           </p>
         </section>
 

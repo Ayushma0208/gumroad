@@ -21,7 +21,9 @@ const {
   userFindUnique,
   productImageDeleteMany,
   productFileCount,
+  reviewGroupBy,
   transaction,
+  queryRaw,
 } = vi.hoisted(() => ({
   productFindMany: vi.fn(),
   productFindUnique: vi.fn(),
@@ -40,7 +42,9 @@ const {
   userFindUnique: vi.fn(),
   productImageDeleteMany: vi.fn(),
   productFileCount: vi.fn(),
+  reviewGroupBy: vi.fn(),
   transaction: vi.fn(),
+  queryRaw: vi.fn(),
 }));
 
 vi.mock("../src/config/cloudinary", () => ({
@@ -79,7 +83,9 @@ vi.mock("../src/config/database", () => ({
     user: { findUnique: userFindUnique },
     productImage: { deleteMany: productImageDeleteMany },
     productFile: { count: productFileCount },
+    review: { groupBy: reviewGroupBy },
     $transaction: transaction,
+    $queryRaw: queryRaw,
     $connect: vi.fn(),
   },
 }));
@@ -213,6 +219,8 @@ describe("products and categories", () => {
       Promise.all(ops),
     );
     productImageDeleteMany.mockResolvedValue({ count: 0 });
+    reviewGroupBy.mockResolvedValue([]);
+    queryRaw.mockResolvedValue([]);
   });
 
   it("lists published products with pagination", async () => {

@@ -163,7 +163,15 @@ export async function setAdminUserStatus(
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: userId }, data: { status } });
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        status,
+        ...(status === "SUSPENDED"
+          ? { sessionVersion: { increment: 1 } }
+          : {}),
+      },
+    });
     await tx.adminAuditLog.create({
       data: {
         adminId,

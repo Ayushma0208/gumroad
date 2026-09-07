@@ -361,10 +361,16 @@ describe("cart", () => {
     expect(response.body.data.summary.itemCount).toBe(0);
   });
 
-  it("does not let a creator use the customer cart", async () => {
+  it("allows creators to use the cart as buyers", async () => {
     const cookies = session(creator);
+    cartUpsert.mockResolvedValue(cartRecord([]));
     const response = await request(app).get("/api/v1/cart").set("Cookie", cookies);
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
+    expect(cartUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { customerId: "u_mira" },
+      }),
+    );
   });
 
   it("calculates totals from catalog prices, not the client", async () => {

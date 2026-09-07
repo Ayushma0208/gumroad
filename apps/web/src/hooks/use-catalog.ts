@@ -18,10 +18,11 @@ export function useCatalogCategories() {
   });
 }
 
-export function useFeaturedCatalog() {
+export function useFeaturedCatalog(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: catalogKeys.featured,
     queryFn: async () => (await fetchRemoteFeatured()).items,
+    enabled: options?.enabled ?? true,
   });
 }
 

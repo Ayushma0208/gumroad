@@ -3,14 +3,55 @@ import Link from "next/link";
 import { Container, Section } from "@/components/layout/container";
 import { SectionHeading } from "@/components/layout/section-heading";
 import { FadeIn } from "@/components/motion/fade-in";
+import { listCreators } from "@/lib/api/creators";
+import { listFeaturedProducts } from "@/lib/api/products";
 import { formatPrice } from "@/lib/format";
-import {
-  featuredCreators,
-  getFeaturedProductForCreator,
-} from "@/lib/mock/catalog";
 import { creatorPath, productPath } from "@/lib/paths";
 
-export function FeaturedCreators() {
+export async function FeaturedCreators() {
+  let creators: {
+    id: string;
+    name: string;
+    slug: string;
+    bio: string;
+    avatarUrl: string | null;
+    productCount: number;
+  }[] = [];
+  const featuredByCreator = new Map<
+    string,
+    { slug: string; title: string; imageUrl: string; priceCents: number; currency: "USD" | "INR" }
+  >();
+
+  try {
+    const [directory, featured] = await Promise.all([
+      listCreators({ limit: 4 }),
+      listFeaturedProducts(),
+    ]);
+    creators = directory.items.map((item) => ({
+      id: item.creator.id,
+      name: item.creator.displayName || item.creator.storeName,
+      slug: item.creator.slug,
+      bio: item.creator.bio,
+      avatarUrl: item.creator.avatar,
+      productCount: item.stats.productCount,
+    }));
+    for (const product of featured) {
+      if (!featuredByCreator.has(product.creator.slug)) {
+        featuredByCreator.set(product.creator.slug, {
+          slug: product.slug,
+          title: product.title,
+          imageUrl: product.imageUrl,
+          priceCents: product.priceCents,
+          currency: product.currency,
+        });
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  if (creators.length === 0) return null;
+
   return (
     <Section>
       <Container>
@@ -23,8 +64,8 @@ export function FeaturedCreators() {
           />
         </FadeIn>
         <div className="grid gap-6 sm:grid-cols-2">
-          {featuredCreators.map((creator, index) => {
-            const product = getFeaturedProductForCreator(creator.slug);
+          {creators.map((creator, index) => {
+            const product = featuredByCreator.get(creator.slug);
             return (
               <FadeIn key={creator.id} delay={index * 0.06}>
                 <article className="group grid overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -33,13 +74,15 @@ export function FeaturedCreators() {
                     className="flex flex-col p-5 sm:p-6"
                   >
                     <span className="relative size-14 overflow-hidden rounded-full bg-muted">
-                      <Image
-                        src={creator.avatarUrl}
-                        alt=""
-                        fill
-                        sizes="56px"
-                        className="object-cover"
-                      />
+                      {creator.avatarUrl ? (
+                        <Image
+                          src={creator.avatarUrl}
+                          alt=""
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      ) : null}
                     </span>
                     <h3 className="mt-5 font-display text-2xl tracking-tight">
                       {creator.name}
@@ -51,7 +94,7 @@ export function FeaturedCreators() {
                       {creator.productCount} products
                     </p>
                   </Link>
-                  {product ? (
+                  {product?.imageUrl ? (
                     <Link
                       href={productPath(product.slug)}
                       className="relative min-h-44 sm:min-h-full"

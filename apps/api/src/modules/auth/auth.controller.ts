@@ -3,26 +3,31 @@ import { cookieName, sessionCookieOptions } from "../../config/cookies";
 import { unauthorized } from "../../utils/app-error";
 import { success } from "../../utils/response";
 import {
+  changePassword,
   getUserById,
   loginUser,
   registerUser,
-  signAccessToken,
+  signAccessTokenForUserId,
 } from "./auth.service";
-import type { LoginInput, RegisterInput } from "./auth.schema";
+import type {
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+} from "./auth.schema";
 
-function setSession(res: Response, userIdToken: string) {
-  res.cookie(cookieName(), userIdToken, sessionCookieOptions());
+function setSession(res: Response, token: string) {
+  res.cookie(cookieName(), token, sessionCookieOptions());
 }
 
 export async function register(req: Request, res: Response) {
   const user = await registerUser(req.body as RegisterInput);
-  setSession(res, signAccessToken(user));
+  setSession(res, await signAccessTokenForUserId(user.id));
   res.status(201).json(success({ user }));
 }
 
 export async function login(req: Request, res: Response) {
   const user = await loginUser(req.body as LoginInput);
-  setSession(res, signAccessToken(user));
+  setSession(res, await signAccessTokenForUserId(user.id));
   res.json(success({ user }));
 }
 
@@ -40,4 +45,12 @@ export async function me(req: Request, res: Response) {
     throw unauthorized();
   }
   res.json(success({ user }));
+}
+
+export async function changePasswordHandler(req: Request, res: Response) {
+  if (!req.user) throw unauthorized();
+  await changePassword(req.user.id, req.body as ChangePasswordInput);
+  // Re-issue cookie with bumped sessionVersion; other devices invalidated.
+  setSession(res, await signAccessTokenForUserId(req.user.id));
+  res.json(success({ ok: true }));
 }

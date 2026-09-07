@@ -10,6 +10,7 @@ import {
 } from "./razorpay.service";
 import type { VerifyRazorpayInput } from "./payment.validation";
 import { redeemCouponForPaidOrder } from "../coupons/coupon.service";
+import { postEarningsForPaidOrder } from "../earnings/earnings.service";
 import { notifyOrderPaid } from "../notifications/notification.events";
 
 const PENDING_WINDOW_MS = 20 * 60 * 1000;
@@ -44,69 +45,85 @@ export async function fulfillPaidOrder(input: {
   providerPaymentId: string;
   source: "verify" | "webhook";
 }) {
-  const result = await prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: input.orderId },
-      include: { payment: true, items: true },
-    });
-    if (!order?.payment) throw notFound("Order not found");
+  const result = await prisma.$transaction(
+    async (tx) => {
+      // Row lock prevents concurrent verify+webhook races on the same payment.
+      const locked = await tx.$queryRaw<Array<{ id: string; status: string }>>`
+        SELECT id, status FROM "Payment"
+        WHERE "orderId" = ${input.orderId}
+        FOR UPDATE
+      `;
+      if (!locked[0]) throw notFound("Order not found");
 
-    if (order.status === "PAID" || isPaidStatus(order.payment.status)) {
-      return { alreadyPaid: true, customerId: order.customerId };
-    }
-
-    try {
-      await tx.payment.update({
-        where: { id: order.payment.id },
-        data: {
-          status: "PAID",
-          providerPaymentId: input.providerPaymentId,
-        },
+      const order = await tx.order.findUnique({
+        where: { id: input.orderId },
+        include: { payment: true, items: true },
       });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        const paid = await tx.order.findUnique({
-          where: { id: input.orderId },
-          include: { payment: true },
-        });
-        if (paid?.status === "PAID" || (paid?.payment && isPaidStatus(paid.payment.status))) {
-          return { alreadyPaid: true, customerId: order.customerId };
-        }
+      if (!order?.payment) throw notFound("Order not found");
+
+      if (order.status === "PAID" || isPaidStatus(order.payment.status)) {
+        return { alreadyPaid: true, customerId: order.customerId };
       }
-      throw error;
-    }
-    await tx.order.update({
-      where: { id: order.id },
-      data: { status: "PAID" },
-    });
-    await tx.purchase.createMany({
-      data: order.items.map((item) => ({
-        userId: order.customerId,
-        productId: item.productId,
+
+      try {
+        await tx.payment.update({
+          where: { id: order.payment.id },
+          data: {
+            status: "PAID",
+            providerPaymentId: input.providerPaymentId,
+          },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          const paid = await tx.order.findUnique({
+            where: { id: input.orderId },
+            include: { payment: true },
+          });
+          if (
+            paid?.status === "PAID" ||
+            (paid?.payment && isPaidStatus(paid.payment.status))
+          ) {
+            return { alreadyPaid: true, customerId: order.customerId };
+          }
+        }
+        throw error;
+      }
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status: "PAID" },
+      });
+      await tx.purchase.createMany({
+        data: order.items.map((item) => ({
+          userId: order.customerId,
+          productId: item.productId,
+          orderId: order.id,
+        })),
+        skipDuplicates: true,
+      });
+      const cart = await tx.cart.findUnique({
+        where: { customerId: order.customerId },
+        select: { id: true },
+      });
+      if (cart) {
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      }
+
+      await redeemCouponForPaidOrder(tx, {
         orderId: order.id,
-      })),
-      skipDuplicates: true,
-    });
-    const cart = await tx.cart.findUnique({
-      where: { customerId: order.customerId },
-      select: { id: true },
-    });
-    if (cart) {
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-    }
+        userId: order.customerId,
+        couponId: order.couponId,
+        discountAmount: order.discount,
+      });
 
-    await redeemCouponForPaidOrder(tx, {
-      orderId: order.id,
-      userId: order.customerId,
-      couponId: order.couponId,
-      discountAmount: order.discount,
-    });
+      await postEarningsForPaidOrder(tx, order.id);
 
-    return { alreadyPaid: false, customerId: order.customerId };
-  });
+      return { alreadyPaid: false, customerId: order.customerId };
+    },
+    { isolationLevel: "Serializable" },
+  );
 
   logEvent("order_marked_paid", {
     orderId: input.orderId,
@@ -228,6 +245,36 @@ export async function handleRazorpayWebhook(rawBody: string, signature: string |
     if (!providerPaymentId) {
       return { ok: true, ignored: true };
     }
+
+    if (paymentEntity?.amount != null) {
+      if (paymentEntity.amount !== payment.amount) {
+        logEvent("webhook_rejected", {
+          reason: "amount_mismatch",
+          orderId: payment.orderId,
+        });
+        throw badRequest("Webhook payment amount does not match this order.");
+      }
+    }
+
+    if (
+      paymentEntity?.status &&
+      !["captured", "authorized", "paid"].includes(paymentEntity.status)
+    ) {
+      logEvent("webhook_ignored", {
+        reason: "payment_status",
+        status: paymentEntity.status,
+      });
+      return { ok: true, ignored: true };
+    }
+
+    if (payment.amount !== razorpayAmountFromCatalog(payment.order.totalAmount)) {
+      logEvent("webhook_rejected", {
+        reason: "order_amount_mismatch",
+        orderId: payment.orderId,
+      });
+      throw badRequest("Stored payment amount does not match the order.");
+    }
+
     await fulfillPaidOrder({
       orderId: payment.orderId,
       providerPaymentId,

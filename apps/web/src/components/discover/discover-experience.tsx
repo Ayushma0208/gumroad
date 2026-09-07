@@ -76,14 +76,14 @@ export function DiscoverExperience() {
 
   const queryFilters = { ...filters, q: debouncedQuery };
   const categoriesQuery = useCatalogCategories();
-  const featuredQuery = useFeaturedCatalog();
+  const showSpotlight = !hasActiveBrowseFilters(queryFilters);
+  const featuredQuery = useFeaturedCatalog({ enabled: showSpotlight });
   const productsQuery = useCatalogProducts(queryFilters);
 
   const categories = categoriesQuery.data ?? [];
   const activeCategory = getCategoryBySlugFromList(categories, filters.category);
   const results = productsQuery.data?.items ?? [];
   const pagination = productsQuery.data?.pagination;
-  const showSpotlight = !hasActiveBrowseFilters(queryFilters);
   const spotlight = showSpotlight
     ? getSpotlightFromProducts(
         featuredQuery.data?.length ? featuredQuery.data : results,

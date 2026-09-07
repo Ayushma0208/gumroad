@@ -11,6 +11,7 @@ import {
   toApiProductType,
   type ProductListParams,
 } from "@/lib/api/catalog";
+import { remoteApiEnabled } from "@/lib/api/http";
 import {
   categories as mockCategories,
   getEditorsPicks as getMockEditorsPicks,
@@ -37,6 +38,10 @@ import type {
   ProductDetail,
 } from "@/types/catalog";
 
+function allowMockFallback() {
+  return !remoteApiEnabled();
+}
+
 function isUnavailable(error: unknown) {
   return !(error instanceof ApiError) || error.status >= 500;
 }
@@ -45,7 +50,7 @@ export async function listProducts(): Promise<Product[]> {
   try {
     return await fetchRemoteProducts();
   } catch (error) {
-    if (!isUnavailable(error)) throw error;
+    if (!allowMockFallback() || !isUnavailable(error)) throw error;
     return mockProducts;
   }
 }
@@ -54,7 +59,7 @@ export async function listCategories(): Promise<Category[]> {
   try {
     return await fetchRemoteCategories();
   } catch (error) {
-    if (!isUnavailable(error)) throw error;
+    if (!allowMockFallback() || !isUnavailable(error)) throw error;
     return mockCategories;
   }
 }
@@ -63,7 +68,7 @@ export async function listFeaturedProducts(): Promise<Product[]> {
   try {
     return (await fetchRemoteFeatured()).items;
   } catch (error) {
-    if (!isUnavailable(error)) throw error;
+    if (!allowMockFallback() || !isUnavailable(error)) throw error;
     return getMockFeaturedProducts();
   }
 }
@@ -72,7 +77,7 @@ export async function listTrendingProducts(): Promise<Product[]> {
   try {
     return (await fetchRemoteTrending()).items;
   } catch (error) {
-    if (!isUnavailable(error)) throw error;
+    if (!allowMockFallback() || !isUnavailable(error)) throw error;
     return getMockTrendingProducts();
   }
 }
@@ -82,7 +87,7 @@ export async function listEditorsPicks(): Promise<Product[]> {
     const featured = await fetchRemoteFeatured();
     return featured.items.filter((product) => product.editorsPick);
   } catch (error) {
-    if (!isUnavailable(error)) throw error;
+    if (!allowMockFallback() || !isUnavailable(error)) throw error;
     return getMockEditorsPicks();
   }
 }
@@ -99,11 +104,14 @@ export async function getProductBySlug(
       ...(remote.images ?? []).filter((url) => url !== remote.coverImage),
     ];
     return {
-      ...hydrateProduct(product, { useMockReviews: false }),
+      ...hydrateProduct(product, {
+        useMockContent: false,
+        useMockReviews: false,
+      }),
       images,
     };
   } catch (error) {
-    if (!isUnavailable(error)) throw error;
+    if (!allowMockFallback() || !isUnavailable(error)) throw error;
     const product = getMockProductBySlug(slug);
     if (!product) return null;
     return hydrateProduct(product);
@@ -118,7 +126,7 @@ export async function listRelatedProducts(
     const related = await fetchRemoteRelated(product.id);
     return related.slice(0, limit);
   } catch (error) {
-    if (!isUnavailable(error)) throw error;
+    if (!allowMockFallback() || !isUnavailable(error)) throw error;
     return getRelatedProducts(product, mockProducts, limit);
   }
 }
@@ -127,7 +135,8 @@ export async function listProductSlugs(): Promise<string[]> {
   try {
     const page = await fetchRemoteProductPage({ limit: 48 });
     return page.items.map((product) => product.slug);
-  } catch {
+  } catch (error) {
+    if (!allowMockFallback()) throw error;
     return mockProducts.map((product) => product.slug);
   }
 }
@@ -170,12 +179,17 @@ export function getCategoryBySlugFromList(
   return categories.find((category) => category.slug === slug) ?? null;
 }
 
+/** @deprecated Prefer listCategories() / useCatalogCategories — mock-only helper for local demos. */
 export function getCategories(): Category[] {
+  if (remoteApiEnabled()) return [];
   return mockCategories;
 }
 
 export function getCategoryBySlug(slug: string | null): Category | null {
-  return getCategoryBySlugFromList(mockCategories, slug);
+  return getCategoryBySlugFromList(
+    remoteApiEnabled() ? [] : mockCategories,
+    slug,
+  );
 }
 
 function priceBounds(price: CatalogFilters["price"]): {
@@ -190,22 +204,27 @@ function priceBounds(price: CatalogFilters["price"]): {
 
 function hydrateProduct(
   product: Product,
-  options: { useMockReviews?: boolean } = {},
+  options: { useMockContent?: boolean; useMockReviews?: boolean } = {},
 ): ProductDetail {
-  const content = getProductContent(product.slug);
+  const useMockContent = options.useMockContent !== false;
+  const useMockReviews = options.useMockReviews !== false;
+  const content = useMockContent ? getProductContent(product.slug) : null;
   const extras = content?.images ?? [];
   const images = [
     product.imageUrl,
     ...extras.filter((url) => url !== product.imageUrl),
   ];
-  const useMockReviews = options.useMockReviews !== false;
 
   return {
     ...product,
     images,
     paragraphs: content?.paragraphs?.length
       ? content.paragraphs
-      : [product.description],
+      : product.description
+        ? [product.description]
+        : product.subtitle
+          ? [product.subtitle]
+          : [],
     highlights: content?.highlights ?? [],
     audience: content?.audience ?? [],
     outcomes: content?.outcomes ?? [],

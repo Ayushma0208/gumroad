@@ -9,7 +9,12 @@ import { listFeaturedProducts } from "@/lib/api/products";
 import { cn } from "@/lib/utils";
 
 export async function FeaturedProducts() {
-  const products = await listFeaturedProducts();
+  let products: Awaited<ReturnType<typeof listFeaturedProducts>> = [];
+  try {
+    products = await listFeaturedProducts();
+  } catch {
+    products = [];
+  }
   const [lead, ...rest] = products;
 
   return (

@@ -27,6 +27,7 @@ const {
   transaction,
   cartFindUnique,
   purchaseFindUnique,
+  purchaseFindMany,
   orderFindFirst,
   orderUpdateMany,
   orderCreate,
@@ -54,6 +55,7 @@ const {
   transaction: vi.fn(),
   cartFindUnique: vi.fn(),
   purchaseFindUnique: vi.fn(),
+  purchaseFindMany: vi.fn(),
   orderFindFirst: vi.fn(),
   orderUpdateMany: vi.fn(),
   orderCreate: vi.fn(),
@@ -116,7 +118,7 @@ vi.mock("../src/config/database", () => ({
     },
     payment: { update: paymentUpdate },
     cart: { findUnique: cartFindUnique },
-    purchase: { findUnique: purchaseFindUnique },
+    purchase: { findUnique: purchaseFindUnique, findMany: purchaseFindMany },
     $executeRaw: executeRaw,
     $transaction: transaction,
     $connect: vi.fn(),
@@ -285,6 +287,7 @@ describe("checkout coupon preview", () => {
     cartFindUnique.mockReset();
     productFindUnique.mockReset();
     purchaseFindUnique.mockReset();
+    purchaseFindMany.mockReset().mockResolvedValue([]);
     couponFindUnique.mockReset();
     couponRedemptionCount.mockReset().mockResolvedValue(0);
   });
@@ -294,30 +297,36 @@ describe("checkout coupon preview", () => {
       id: "cart_1",
       customerId: "u_leah",
       items: [
-        { id: "ci1", productId: "p_north", quantity: 1, product: { creator: { userId: "u_mira", id: "cr_mira" } } },
-        { id: "ci2", productId: "p_atlas", quantity: 1, product: { creator: { userId: "u_kenji", id: "cr_kenji" } } },
+        {
+          id: "ci1",
+          productId: "p_north",
+          quantity: 1,
+          product: {
+            id: "p_north",
+            title: "Northline",
+            price: 2000,
+            currency: "USD",
+            status: "PUBLISHED",
+            creatorId: "cr_mira",
+            creator: { userId: "u_mira", id: "cr_mira" },
+          },
+        },
+        {
+          id: "ci2",
+          productId: "p_atlas",
+          quantity: 1,
+          product: {
+            id: "p_atlas",
+            title: "Atlas",
+            price: 1000,
+            currency: "USD",
+            status: "PUBLISHED",
+            creatorId: "cr_kenji",
+            creator: { userId: "u_kenji", id: "cr_kenji" },
+          },
+        },
       ],
     });
-    productFindUnique
-      .mockResolvedValueOnce({
-        id: "p_north",
-        title: "Northline",
-        price: 2000,
-        currency: "USD",
-        status: "PUBLISHED",
-        creatorId: "cr_mira",
-        creator: { userId: "u_mira", id: "cr_mira" },
-      })
-      .mockResolvedValueOnce({
-        id: "p_atlas",
-        title: "Atlas",
-        price: 1000,
-        currency: "USD",
-        status: "PUBLISHED",
-        creatorId: "cr_kenji",
-        creator: { userId: "u_kenji", id: "cr_kenji" },
-      });
-    purchaseFindUnique.mockResolvedValue(null);
     couponFindUnique.mockResolvedValue(couponRecord());
 
     const res = await request(app)
@@ -338,19 +347,22 @@ describe("checkout coupon preview", () => {
       id: "cart_1",
       customerId: "u_leah",
       items: [
-        { id: "ci1", productId: "p_north", quantity: 1, product: { creator: { userId: "u_mira", id: "cr_mira" } } },
+        {
+          id: "ci1",
+          productId: "p_north",
+          quantity: 1,
+          product: {
+            id: "p_north",
+            title: "Northline",
+            price: 2000,
+            currency: "USD",
+            status: "PUBLISHED",
+            creatorId: "cr_mira",
+            creator: { userId: "u_mira", id: "cr_mira" },
+          },
+        },
       ],
     });
-    productFindUnique.mockResolvedValue({
-      id: "p_north",
-      title: "Northline",
-      price: 2000,
-      currency: "USD",
-      status: "PUBLISHED",
-      creatorId: "cr_mira",
-      creator: { userId: "u_mira", id: "cr_mira" },
-    });
-    purchaseFindUnique.mockResolvedValue(null);
     couponFindUnique.mockResolvedValue(
       couponRecord({ expiresAt: new Date(Date.now() - 1000) }),
     );
@@ -368,19 +380,22 @@ describe("checkout coupon preview", () => {
       id: "cart_1",
       customerId: "u_leah",
       items: [
-        { id: "ci1", productId: "p_north", quantity: 1, product: { creator: { userId: "u_mira", id: "cr_mira" } } },
+        {
+          id: "ci1",
+          productId: "p_north",
+          quantity: 1,
+          product: {
+            id: "p_north",
+            title: "Northline",
+            price: 500,
+            currency: "USD",
+            status: "PUBLISHED",
+            creatorId: "cr_mira",
+            creator: { userId: "u_mira", id: "cr_mira" },
+          },
+        },
       ],
     });
-    productFindUnique.mockResolvedValue({
-      id: "p_north",
-      title: "Northline",
-      price: 500,
-      currency: "USD",
-      status: "PUBLISHED",
-      creatorId: "cr_mira",
-      creator: { userId: "u_mira", id: "cr_mira" },
-    });
-    purchaseFindUnique.mockResolvedValue(null);
     couponFindUnique.mockResolvedValue(couponRecord({ minOrderAmount: 1000 }));
 
     const res = await request(app)

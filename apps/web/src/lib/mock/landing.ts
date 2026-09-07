@@ -23,7 +23,7 @@ export const howItWorksSteps = [
   {
     number: "03",
     title: "Get paid",
-    body: "Checkout, instant delivery, the buyer’s email. Ten percent. No monthly plan to reach your own customers.",
+    body: "Checkout, instant delivery, the buyer’s email. Configurable platform fees — no monthly plan to reach your own customers.",
     imageId: "photo-1554224155-6726b3ff858f",
     caption: "The money, then the relationship",
   },

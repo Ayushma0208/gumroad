@@ -8,6 +8,7 @@ import { ProductCardCartButton } from "@/components/product/product-card-cart-bu
 import { WishlistButton } from "@/components/wishlist/wishlist-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOwnsProduct } from "@/hooks/use-library";
+import { cloudinaryThumb } from "@/lib/cloudinary";
 import { formatCompactNumber, formatPrice } from "@/lib/format";
 import { creatorPath, productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
@@ -116,7 +117,7 @@ export function ProductCard({
           <Link href={productPath(product.slug)} className="absolute inset-0">
             {product.imageUrl ? (
               <Image
-                src={product.imageUrl}
+                src={cloudinaryThumb(product.imageUrl, 1200)}
                 alt={product.title}
                 fill
                 sizes="(max-width: 1024px) 100vw, 60vw"
@@ -164,7 +165,7 @@ export function ProductCard({
           >
             {product.imageUrl ? (
               <Image
-                src={product.imageUrl}
+                src={cloudinaryThumb(product.imageUrl, 320)}
                 alt={product.title}
                 fill
                 sizes="144px"
@@ -202,7 +203,7 @@ export function ProductCard({
         >
           {product.imageUrl ? (
             <Image
-              src={product.imageUrl}
+              src={cloudinaryThumb(product.imageUrl, 720)}
               alt={product.title}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

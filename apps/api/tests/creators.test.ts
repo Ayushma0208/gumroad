@@ -12,6 +12,7 @@ const {
   userFindUnique,
   transaction,
   reviewAggregate,
+  reviewGroupBy,
 } = vi.hoisted(() => ({
   creatorFindUnique: vi.fn(),
   creatorFindMany: vi.fn(),
@@ -21,6 +22,7 @@ const {
   userFindUnique: vi.fn(),
   transaction: vi.fn(),
   reviewAggregate: vi.fn(),
+  reviewGroupBy: vi.fn(),
 }));
 
 vi.mock("../src/config/cloudinary", () => ({
@@ -50,7 +52,7 @@ vi.mock("../src/config/database", () => ({
     user: { findUnique: userFindUnique },
     review: {
       aggregate: reviewAggregate,
-      groupBy: vi.fn(),
+      groupBy: reviewGroupBy,
     },
     $transaction: transaction,
     $connect: vi.fn(),
@@ -178,6 +180,8 @@ describe("creator storefront", () => {
     userFindUnique.mockReset();
     transaction.mockReset();
     reviewAggregate.mockReset();
+    reviewGroupBy.mockReset();
+    reviewGroupBy.mockResolvedValue([]);
     reviewAggregate.mockResolvedValue({
       _avg: { rating: 5 },
       _count: { _all: 2 },

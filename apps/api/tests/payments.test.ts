@@ -8,6 +8,7 @@ const {
   cartFindUnique,
   productFindUnique,
   purchaseFindUnique,
+  purchaseFindMany,
   purchaseCreateMany,
   orderFindFirst,
   orderFindUnique,
@@ -25,6 +26,7 @@ const {
   cartFindUnique: vi.fn(),
   productFindUnique: vi.fn(),
   purchaseFindUnique: vi.fn(),
+  purchaseFindMany: vi.fn(),
   purchaseCreateMany: vi.fn(),
   orderFindFirst: vi.fn(),
   orderFindUnique: vi.fn(),
@@ -48,7 +50,11 @@ vi.mock("../src/config/database", () => ({
   prisma: {
     cart: { findUnique: cartFindUnique },
     product: { findUnique: productFindUnique },
-    purchase: { findUnique: purchaseFindUnique, createMany: purchaseCreateMany },
+    purchase: {
+      findUnique: purchaseFindUnique,
+      findMany: purchaseFindMany,
+      createMany: purchaseCreateMany,
+    },
     order: {
       findFirst: orderFindFirst,
       findUnique: orderFindUnique,
@@ -173,6 +179,7 @@ describe("checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     purchaseFindUnique.mockResolvedValue(null);
+    purchaseFindMany.mockResolvedValue([]);
     orderFindFirst.mockResolvedValue(null);
     orderUpdateMany.mockResolvedValue({ count: 0 });
     createRazorpayOrder.mockResolvedValue({
@@ -188,6 +195,8 @@ describe("checkout", () => {
         purchase: { createMany: purchaseCreateMany },
         cart: { findUnique: cartFindUnique },
         cartItem: { deleteMany: cartItemDeleteMany },
+        creatorEarning: { create: vi.fn().mockResolvedValue({ id: "earn_1" }) },
+        $queryRaw: vi.fn().mockResolvedValue([{ id: "pay_1", status: "PENDING" }]),
       }),
     );
   });
@@ -209,9 +218,14 @@ describe("checkout", () => {
   it("rejects unpublished products", async () => {
     cartFindUnique.mockResolvedValue({
       id: "cart_1",
-      items: [{ productId: "p_northline", quantity: 1, product: catalogProduct() }],
+      items: [
+        {
+          productId: "p_northline",
+          quantity: 1,
+          product: catalogProduct({ status: "DRAFT" }),
+        },
+      ],
     });
-    productFindUnique.mockResolvedValue(catalogProduct({ status: "DRAFT" }));
     const response = await request(app)
       .post("/api/v1/checkout/create-order")
       .set("Cookie", session(customer));
@@ -222,9 +236,8 @@ describe("checkout", () => {
   it("rejects a missing product", async () => {
     cartFindUnique.mockResolvedValue({
       id: "cart_1",
-      items: [{ productId: "missing", quantity: 1, product: catalogProduct() }],
+      items: [{ productId: "missing", quantity: 1, product: null }],
     });
-    productFindUnique.mockResolvedValue(null);
     const response = await request(app)
       .post("/api/v1/checkout/create-order")
       .set("Cookie", session(customer));
@@ -236,8 +249,7 @@ describe("checkout", () => {
       id: "cart_1",
       items: [{ productId: "p_northline", quantity: 1, product: catalogProduct() }],
     });
-    productFindUnique.mockResolvedValue(catalogProduct());
-    purchaseFindUnique.mockResolvedValue({ id: "pur_1" });
+    purchaseFindMany.mockResolvedValue([{ productId: "p_northline" }]);
     const response = await request(app)
       .post("/api/v1/checkout/create-order")
       .set("Cookie", session(customer));
@@ -247,9 +259,14 @@ describe("checkout", () => {
   it("creates a Razorpay order using catalog prices, not the request body", async () => {
     cartFindUnique.mockResolvedValue({
       id: "cart_1",
-      items: [{ productId: "p_northline", quantity: 1, product: catalogProduct() }],
+      items: [
+        {
+          productId: "p_northline",
+          quantity: 1,
+          product: catalogProduct({ price: 2900 }),
+        },
+      ],
     });
-    productFindUnique.mockResolvedValue(catalogProduct({ price: 2900 }));
     orderCreate.mockResolvedValue({ id: "ord_1" });
     createRazorpayOrder.mockResolvedValue({
       id: "order_rzp_1",
@@ -307,6 +324,8 @@ describe("payment verification", () => {
         purchase: { createMany: purchaseCreateMany },
         cart: { findUnique: cartFindUnique },
         cartItem: { deleteMany: cartItemDeleteMany },
+        creatorEarning: { create: vi.fn().mockResolvedValue({ id: "earn_1" }) },
+        $queryRaw: vi.fn().mockResolvedValue([{ id: "pay_1", status: "PENDING" }]),
       }),
     );
     cartFindUnique.mockResolvedValue({ id: "cart_1" });
@@ -404,6 +423,8 @@ describe("razorpay webhook", () => {
         purchase: { createMany: purchaseCreateMany },
         cart: { findUnique: cartFindUnique },
         cartItem: { deleteMany: cartItemDeleteMany },
+        creatorEarning: { create: vi.fn().mockResolvedValue({ id: "earn_1" }) },
+        $queryRaw: vi.fn().mockResolvedValue([{ id: "pay_1", status: "PENDING" }]),
       }),
     );
     cartFindUnique.mockResolvedValue({ id: "cart_1" });
@@ -434,6 +455,7 @@ describe("razorpay webhook", () => {
     paymentFindUnique.mockResolvedValue({
       id: "pay_1",
       orderId: "ord_1",
+      amount: 7900,
       status: "PENDING",
       providerPaymentId: null,
       order: pending,
@@ -497,7 +519,7 @@ describe("order security", () => {
     const response = await request(app)
       .get("/api/v1/orders/ord_1")
       .set("Cookie", session(other));
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
   });
 
   it("returns the owner’s order without payment secrets", async () => {

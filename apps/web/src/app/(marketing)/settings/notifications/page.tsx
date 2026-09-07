@@ -1,16 +1,5 @@
-import type { Metadata } from "next";
-import { ProtectedLayout } from "@/components/auth/protected-layout";
-import { NotificationPreferencesExperience } from "@/components/notifications/notification-preferences-experience";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Notification preferences",
-  robots: { index: false, follow: false },
-};
-
-export default function NotificationSettingsPage() {
-  return (
-    <ProtectedLayout gate="user">
-      <NotificationPreferencesExperience />
-    </ProtectedLayout>
-  );
+export default function NotificationSettingsRedirectPage() {
+  redirect("/account/notifications");
 }

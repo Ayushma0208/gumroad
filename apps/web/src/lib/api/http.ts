@@ -39,6 +39,7 @@ export async function requestJson<T>(
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "X-Lumen-Client": "web",
       ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),

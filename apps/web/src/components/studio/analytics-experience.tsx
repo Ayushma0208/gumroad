@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { AnalyticsRangeControl } from "@/components/studio/analytics-range-control";
 import { ChartTooltip } from "@/components/studio/chart-tooltip";
 import { MetricStat } from "@/components/studio/metric-stat";
-import { RevenueChart } from "@/components/studio/revenue-chart";
 import { StudioQueryError } from "@/components/studio/query-error";
 import { OverviewSkeleton } from "@/components/studio/skeletons";
 import { StudioPage } from "@/components/studio/studio-page";
@@ -31,6 +31,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+const RevenueChart = dynamic(
+  () =>
+    import("@/components/studio/revenue-chart").then((mod) => mod.RevenueChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 animate-pulse rounded-xl bg-muted/60" aria-hidden />
+    ),
+  },
+);
 
 type SalesMetric = "orders" | "unitsSold";
 

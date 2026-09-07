@@ -316,3 +316,66 @@ export async function uploadCreatorBanner(userId: string, file: Express.Multer.F
   }
   return { bannerUrl: updated.banner };
 }
+
+export async function uploadUserAvatar(userId: string, file: Express.Multer.File | undefined) {
+  if (!file) throw badRequest("Choose an image to upload.");
+  assertAllowedImage(file.originalname, file.mimetype);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, avatarPublicId: true },
+  });
+  if (!user) throw notFound("User not found.");
+
+  const uploaded = await uploadPublicImage({
+    buffer: file.buffer,
+    folder: cloudinaryFolders.userAvatar(userId),
+    fileName: file.originalname,
+  });
+  const previous = user.avatarPublicId;
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      avatarUrl: uploaded.secureUrl,
+      avatarPublicId: uploaded.publicId,
+    },
+    include: { creatorProfile: true },
+  });
+  if (previous && previous !== uploaded.publicId) {
+    await destroyCloudinaryAsset({
+      publicId: previous,
+      resourceType: "image",
+      type: "upload",
+    }).catch((error) => {
+      logEvent("cloudinary_cleanup_failed", {
+        publicId: previous,
+        reason: error instanceof Error ? error.message : "unknown",
+      });
+    });
+  }
+  return { avatarUrl: updated.avatarUrl };
+}
+
+export async function deleteUserAvatar(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, avatarPublicId: true },
+  });
+  if (!user) throw notFound("User not found.");
+  await prisma.user.update({
+    where: { id: userId },
+    data: { avatarUrl: null, avatarPublicId: null },
+  });
+  if (user.avatarPublicId) {
+    await destroyCloudinaryAsset({
+      publicId: user.avatarPublicId,
+      resourceType: "image",
+      type: "upload",
+    }).catch((error) => {
+      logEvent("cloudinary_cleanup_failed", {
+        publicId: user.avatarPublicId,
+        reason: error instanceof Error ? error.message : "unknown",
+      });
+    });
+  }
+  return { avatarUrl: null as string | null };
+}

@@ -18,7 +18,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const unreadQuery = useUnreadNotificationCount();
-  const listQuery = useNotifications({ limit: 8 });
+  const listQuery = useNotifications({ limit: 8, enabled: open });
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
   const unread = unreadQuery.data ?? 0;

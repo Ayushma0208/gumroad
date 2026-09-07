@@ -53,7 +53,11 @@ const rows: Array<{
   },
 ];
 
-export function NotificationPreferencesExperience() {
+export function NotificationPreferencesExperience({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const query = useNotificationPreferences();
   const update = useUpdateNotificationPreferences();
   const showToast = useToastStore((state) => state.show);
@@ -69,18 +73,29 @@ export function NotificationPreferencesExperience() {
     }
   }
 
-  return (
-    <Container className="py-8 sm:py-12">
-      <PageHeader
-        eyebrow="Account"
-        title="Notification preferences"
-        description="Transactional emails keep purchases and sales working. Marketing is optional."
-      />
+  const body = (
+    <>
+      {embedded ? (
+        <div className="mb-8">
+          <h1 className="font-display text-3xl tracking-tight">Notifications</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Transactional emails keep purchases and sales working. Marketing is optional.
+          </p>
+        </div>
+      ) : (
+        <PageHeader
+          eyebrow="Account"
+          title="Notification preferences"
+          description="Transactional emails keep purchases and sales working. Marketing is optional."
+        />
+      )}
 
       {query.isPending || !prefs ? (
-        <p className="mt-8 text-sm text-muted-foreground">Loading preferences…</p>
+        <p className={embedded ? "text-sm text-muted-foreground" : "mt-8 text-sm text-muted-foreground"}>
+          Loading preferences…
+        </p>
       ) : (
-        <div className="mt-10 max-w-xl space-y-10">
+        <div className={embedded ? "max-w-xl space-y-10" : "mt-10 max-w-xl space-y-10"}>
           <section>
             <h2 className="text-base font-medium">Transactional</h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -130,8 +145,11 @@ export function NotificationPreferencesExperience() {
           </section>
         </div>
       )}
-    </Container>
+    </>
   );
+
+  if (embedded) return body;
+  return <Container className="py-8 sm:py-12">{body}</Container>;
 }
 
 function PreferenceRow({

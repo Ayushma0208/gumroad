@@ -1,4 +1,4 @@
-import type { Prisma, ProductStatus, ProductType, Role } from "@prisma/client";
+import { Prisma, type ProductStatus, type ProductType, type Role } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { badRequest, conflict, forbidden, notFound } from "../../utils/app-error";
 import {
@@ -10,13 +10,18 @@ import { slugify } from "../../utils/slug";
 import { assertProductOwnership } from "../access/access.service";
 import { destroyCloudinaryAsset } from "../../config/cloudinary";
 import { logEvent } from "../../utils/logger";
-import { serializeProduct } from "./product.types";
+import {
+  loadReviewStatsForProducts,
+  serializeProduct,
+  serializeProductList,
+} from "./product.types";
 import type {
   CreateProductInput,
   ListProductsQuery,
   UpdateProductInput,
 } from "./product.validation";
 
+/** Full graph for product detail / studio manage. */
 const productInclude = {
   category: true,
   creator: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
@@ -25,6 +30,33 @@ const productInclude = {
     select: { id: true, fileName: true, fileSize: true, mimeType: true, format: true },
   },
   reviews: { where: { status: "PUBLISHED" as const }, select: { rating: true } },
+  _count: {
+    select: {
+      files: true,
+      orderItems: { where: { order: { status: "PAID" as const } } },
+    },
+  },
+} satisfies Prisma.ProductInclude;
+
+/** Slim graph for Discover / cards / search lists — no files, no review rows. */
+export const productListInclude = {
+  category: { select: { id: true, slug: true, label: true } },
+  creator: {
+    select: {
+      id: true,
+      storeName: true,
+      slug: true,
+      displayName: true,
+      avatar: true,
+      bio: true,
+      user: { select: { id: true, name: true, avatarUrl: true } },
+    },
+  },
+  images: {
+    orderBy: { sortOrder: "asc" as const },
+    take: 4,
+    select: { url: true, sortOrder: true },
+  },
   _count: {
     select: {
       files: true,
@@ -138,27 +170,27 @@ function orderBy(sort: string): Prisma.ProductOrderByWithRelationInput[] {
   }
 }
 
-async function productIdsMeetingMinRating(minRating: number, where: Prisma.ProductWhereInput) {
-  const products = await prisma.product.findMany({
+async function productIdsMeetingMinRating(
+  minRating: number,
+  where: Prisma.ProductWhereInput,
+) {
+  const candidates = await prisma.product.findMany({
     where,
-    select: {
-      id: true,
-      reviews: {
-        where: { status: "PUBLISHED" },
-        select: { rating: true },
-      },
-    },
-    take: 400,
+    select: { id: true },
+    take: 2000,
   });
-  return products
-    .filter((product) => {
-      if (product.reviews.length === 0) return false;
-      const avg =
-        product.reviews.reduce((sum, review) => sum + review.rating, 0) /
-        product.reviews.length;
-      return avg >= minRating;
-    })
-    .map((product) => product.id);
+  if (candidates.length === 0) return [];
+
+  const ids = candidates.map((row) => row.id);
+  const rows = await prisma.$queryRaw<Array<{ productId: string }>>`
+    SELECT "productId"
+    FROM "Review"
+    WHERE status = 'PUBLISHED'::"ReviewStatus"
+      AND "productId" IN (${Prisma.join(ids)})
+    GROUP BY "productId"
+    HAVING AVG(rating) >= ${minRating}
+  `;
+  return rows.map((row) => row.productId);
 }
 
 export async function listPublishedProducts(filters: ListProductsQuery) {
@@ -181,14 +213,14 @@ export async function listPublishedProducts(filters: ListProductsQuery) {
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
-      include: productInclude,
+      include: productListInclude,
       orderBy: orderBy(sort),
       ...skipTake(pagination),
     }),
   ]);
 
   return {
-    items: products.map((product) => serializeProduct(product)),
+    items: await serializeProductList(products),
     pagination: paginationMeta(pagination.page, pagination.limit, total),
   };
 }
@@ -200,28 +232,27 @@ export async function listFeaturedProducts(page?: number, limit?: number) {
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
-      include: productInclude,
+      include: productListInclude,
       orderBy: [{ createdAt: "desc" }],
       ...skipTake(pagination),
     }),
   ]);
   return {
-    items: products.map((product) => serializeProduct(product)),
+    items: await serializeProductList(products),
     pagination: paginationMeta(pagination.page, pagination.limit, total),
   };
 }
 
-function trendingScore(product: {
-  createdAt: Date;
-  reviews: { rating: number }[];
-  _count?: { orderItems?: number };
-}) {
+function trendingScore(
+  product: {
+    createdAt: Date;
+    _count?: { orderItems?: number };
+  },
+  review?: { rating: number; reviewCount: number },
+) {
   const sales = product._count?.orderItems ?? 0;
-  const reviewCount = product.reviews.length;
-  const rating =
-    reviewCount === 0
-      ? 0
-      : product.reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount;
+  const reviewCount = review?.reviewCount ?? 0;
+  const rating = review?.rating ?? 0;
   const ageDays = Math.max(
     1,
     (Date.now() - product.createdAt.getTime()) / (1000 * 60 * 60 * 24),
@@ -235,13 +266,13 @@ export async function listTrendingProducts(page?: number, limit?: number) {
   // Prefer curator-flagged trending, then paid sales velocity among published products.
   const flagged = await prisma.product.findMany({
     where: { status: "PUBLISHED", trending: true },
-    include: productInclude,
+    include: productListInclude,
     orderBy: [{ orderItems: { _count: "desc" } }, { createdAt: "desc" }],
     take: 40,
   });
   const need = Math.max(40, pagination.page * pagination.limit);
-  let ranked = flagged;
-  if (ranked.length < need) {
+  let pool = flagged;
+  if (pool.length < need) {
     const extra = await prisma.product.findMany({
       where: {
         status: "PUBLISHED",
@@ -249,24 +280,26 @@ export async function listTrendingProducts(page?: number, limit?: number) {
           ? { id: { notIn: flagged.map((product) => product.id) } }
           : {}),
       },
-      include: productInclude,
+      include: productListInclude,
       orderBy: [{ orderItems: { _count: "desc" } }, { createdAt: "desc" }],
       take: 80 - flagged.length,
     });
-    ranked = [
-      ...flagged,
-      ...[...extra].sort((a, b) => trendingScore(b) - trendingScore(a)),
-    ];
-  } else {
-    ranked = [...flagged].sort((a, b) => trendingScore(b) - trendingScore(a));
+    pool = [...flagged, ...extra];
   }
+
+  const stats = await loadReviewStatsForProducts(pool.map((p) => p.id));
+  const ranked = [...pool].sort(
+    (a, b) =>
+      trendingScore(b, stats.get(b.id)) - trendingScore(a, stats.get(a.id)),
+  );
+
   const total = ranked.length;
   const slice = ranked.slice(
     (pagination.page - 1) * pagination.limit,
     pagination.page * pagination.limit,
   );
   return {
-    items: slice.map((product) => serializeProduct(product)),
+    items: await serializeProductList(slice),
     pagination: paginationMeta(pagination.page, pagination.limit, total),
   };
 }
@@ -323,7 +356,7 @@ export async function listRelatedProducts(id: string) {
         },
       ],
     },
-    include: productInclude,
+    include: productListInclude,
     take: 24,
   });
 
@@ -336,7 +369,7 @@ export async function listRelatedProducts(id: string) {
     return score(b) - score(a);
   });
 
-  return ranked.slice(0, 4).map((item) => serializeProduct(item));
+  return serializeProductList(ranked.slice(0, 4));
 }
 
 export async function listMyProducts(

@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Field } from "@/components/studio/field";
@@ -58,7 +59,13 @@ export function SettingsExperience() {
     <StudioPage className="max-w-2xl">
       <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Settings</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Storefront identity, branding, and how buyers find you.
+        Storefront identity, branding, and how buyers find you.{" "}
+        <Link
+          href="/dashboard/settings/payouts"
+          className="text-foreground underline-offset-4 hover:underline"
+        >
+          Payout settings
+        </Link>
       </p>
       <SettingsForm userId={user.id} defaultValues={query.data} />
     </StudioPage>

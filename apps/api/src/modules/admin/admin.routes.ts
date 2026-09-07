@@ -30,6 +30,15 @@ import {
 } from "./admin.schema";
 import { z } from "zod";
 import { emailHealth, processEmails } from "../notifications/notification.controller";
+import * as earningsCtrl from "../earnings/earnings.controller";
+import * as payoutCtrl from "../payouts/payout.controller";
+import {
+  adminEarningsQuerySchema,
+  adminPayoutAccountSchema,
+  adminPayoutStatusSchema,
+  adminPayoutsQuerySchema,
+  payoutIdParamSchema,
+} from "../earnings/earnings.schema";
 
 export const adminRouter = Router();
 
@@ -168,3 +177,31 @@ adminRouter.delete(
 
 adminRouter.get("/email-jobs", asyncHandler(emailHealth));
 adminRouter.post("/email-jobs/process", asyncHandler(processEmails));
+
+adminRouter.get(
+  "/payouts",
+  validateQuery(adminPayoutsQuerySchema),
+  asyncHandler(payoutCtrl.adminPayouts),
+);
+adminRouter.get(
+  "/payouts/:payoutId",
+  validateParams(payoutIdParamSchema),
+  asyncHandler(payoutCtrl.adminPayoutDetail),
+);
+adminRouter.patch(
+  "/payouts/:payoutId/status",
+  validateParams(payoutIdParamSchema),
+  validateBody(adminPayoutStatusSchema),
+  asyncHandler(payoutCtrl.adminPayoutStatus),
+);
+adminRouter.patch(
+  "/creators/:creatorId/payout-account",
+  validateParams(adminCreatorIdParamSchema),
+  validateBody(adminPayoutAccountSchema),
+  asyncHandler(payoutCtrl.adminCreatorPayoutAccount),
+);
+adminRouter.get(
+  "/earnings",
+  validateQuery(adminEarningsQuerySchema),
+  asyncHandler(earningsCtrl.adminList),
+);

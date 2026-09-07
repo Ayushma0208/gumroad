@@ -6,12 +6,16 @@ import {
 } from "@/lib/mock/auth-db";
 import {
   jsonError,
+  mockAuthForbidden,
   SESSION_COOKIE,
   sessionCookieOptions,
 } from "@/app/api/auth/_shared";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  const blocked = mockAuthForbidden();
+  if (blocked) return blocked;
+
   const body: unknown = await request.json().catch(() => null);
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) {

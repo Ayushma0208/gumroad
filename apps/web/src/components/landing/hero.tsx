@@ -50,7 +50,8 @@ export function LandingHero() {
               </Link>
             </div>
             <p className="mt-6 text-sm text-muted-foreground">
-              Ten percent. No monthly rent on your own audience.
+              Keep the relationship with your buyers — no monthly rent on your own
+              audience.
             </p>
           </FadeInOnLoad>
 

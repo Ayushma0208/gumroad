@@ -6,10 +6,16 @@ import {
   renderCreatorSale,
   renderProductStatus,
   renderPurchaseConfirmation,
+  renderPayoutAccountUpdate,
+  renderPayoutFailed,
+  renderPayoutPaid,
+  renderPayoutRequested,
   renderReviewReceived,
   type CreatorSaleEmailPayload,
   type ProductStatusEmailPayload,
   type PurchaseEmailPayload,
+  type PayoutAccountEmailPayload,
+  type PayoutEmailPayload,
   type ReviewEmailPayload,
 } from "./email.templates";
 
@@ -68,6 +74,14 @@ function renderJob(template: EmailTemplate, payload: unknown) {
       return renderReviewReceived(payload as ReviewEmailPayload);
     case "PRODUCT_STATUS":
       return renderProductStatus(payload as ProductStatusEmailPayload);
+    case "PAYOUT_REQUESTED":
+      return renderPayoutRequested(payload as PayoutEmailPayload);
+    case "PAYOUT_PAID":
+      return renderPayoutPaid(payload as PayoutEmailPayload);
+    case "PAYOUT_FAILED":
+      return renderPayoutFailed(payload as PayoutEmailPayload);
+    case "PAYOUT_ACCOUNT_UPDATE":
+      return renderPayoutAccountUpdate(payload as PayoutAccountEmailPayload);
     default:
       throw new Error(`Unknown email template: ${template}`);
   }

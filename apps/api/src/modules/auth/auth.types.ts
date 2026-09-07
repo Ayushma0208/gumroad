@@ -7,6 +7,7 @@ export type PublicUser = {
   role: Role;
   status: UserStatus;
   avatarUrl: string | null;
+  createdAt: string;
   creatorProfile: {
     displayName: string;
     storeName: string;
@@ -25,6 +26,7 @@ export function toPublicUser(
     role: Role;
     status: UserStatus;
     avatarUrl: string | null;
+    createdAt?: Date | null;
     creatorProfile: CreatorProfile | null;
   },
 ): PublicUser {
@@ -35,6 +37,9 @@ export function toPublicUser(
     role: user.role,
     status: user.status,
     avatarUrl: user.avatarUrl,
+    createdAt: user.createdAt
+      ? user.createdAt.toISOString()
+      : new Date(0).toISOString(),
     creatorProfile: user.creatorProfile
       ? {
           displayName: user.creatorProfile.displayName,

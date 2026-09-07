@@ -4,6 +4,7 @@ import { success } from "../../utils/response";
 import {
   deleteProductFile,
   deleteProductImage,
+  deleteUserAvatar,
   listProductFiles,
   listProductImages,
   reorderProductImages,
@@ -11,6 +12,7 @@ import {
   uploadCreatorBanner,
   uploadProductFile,
   uploadProductImage,
+  uploadUserAvatar,
 } from "./media.service";
 
 function actor(req: Request) {
@@ -98,4 +100,16 @@ export async function createBanner(req: Request, res: Response) {
   const user = actor(req);
   const result = await uploadCreatorBanner(user.id, req.file);
   res.status(201).json(success(result));
+}
+
+export async function createUserAvatar(req: Request, res: Response) {
+  const user = actor(req);
+  const result = await uploadUserAvatar(user.id, req.file);
+  res.status(201).json(success(result));
+}
+
+export async function removeUserAvatar(req: Request, res: Response) {
+  const user = actor(req);
+  const result = await deleteUserAvatar(user.id);
+  res.json(success(result));
 }

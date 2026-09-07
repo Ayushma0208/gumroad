@@ -1,18 +1,39 @@
 import { prisma } from "../../config/database";
-import { forbidden, notFound } from "../../utils/app-error";
+import { notFound } from "../../utils/app-error";
+import { parsePagination, skipTake } from "../../utils/pagination";
 import { orderDetailInclude } from "../payments/payment.service";
 import { serializeOrder } from "../payments/payment.types";
 
 export async function listOrdersForUser(
   userId: string,
   role: "CUSTOMER" | "CREATOR" | "ADMIN",
+  page = 1,
+  limit = 24,
 ) {
-  const orders = await prisma.order.findMany({
-    where: role === "ADMIN" ? {} : { customerId: userId },
-    orderBy: { createdAt: "desc" },
-    include: orderDetailInclude,
-  });
-  return orders.map(serializeOrder);
+  const pagination = parsePagination(page, limit);
+  const { skip, take } = skipTake(pagination);
+  const where = role === "ADMIN" ? {} : { customerId: userId };
+
+  const [total, orders] = await Promise.all([
+    prisma.order.count({ where }),
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+      include: orderDetailInclude,
+    }),
+  ]);
+
+  return {
+    items: orders.map(serializeOrder),
+    meta: {
+      page: pagination.page,
+      pageSize: pagination.limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pagination.limit)),
+    },
+  };
 }
 
 export async function getOrderForViewer(
@@ -25,7 +46,7 @@ export async function getOrderForViewer(
   });
   if (!order) throw notFound("Order not found");
   if (viewer.role !== "ADMIN" && order.customerId !== viewer.id) {
-    throw forbidden("You cannot view this order.");
+    throw notFound("Order not found");
   }
   return serializeOrder(order);
 }
@@ -34,6 +55,7 @@ export async function listPurchasesForUser(userId: string) {
   const purchases = await prisma.purchase.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
+    take: 200,
     include: {
       product: {
         select: {

@@ -52,12 +52,16 @@ async function loadCheckoutLines(customerId: string): Promise<CartLineForPricing
     throw badRequest("Your bag is empty.");
   }
 
+  const productIds = cart.items.map((item) => item.productId);
+  const owned = await prisma.purchase.findMany({
+    where: { userId: customerId, productId: { in: productIds } },
+    select: { productId: true },
+  });
+  const ownedIds = new Set(owned.map((row) => row.productId));
+
   const lines: CartLineForPricing[] = [];
   for (const item of cart.items) {
-    const product = await prisma.product.findUnique({
-      where: { id: item.productId },
-      include: { creator: { select: { userId: true, id: true } } },
-    });
+    const product = item.product;
     if (!product) {
       throw badRequest("A product in your bag is no longer available.");
     }
@@ -67,12 +71,7 @@ async function loadCheckoutLines(customerId: string): Promise<CartLineForPricing
     if (product.creator.userId === customerId) {
       throw forbidden("You cannot purchase your own product.");
     }
-    const owned = await prisma.purchase.findUnique({
-      where: {
-        userId_productId: { userId: customerId, productId: product.id },
-      },
-    });
-    if (owned) {
+    if (ownedIds.has(product.id)) {
       throw conflict(`You already own ${product.title}.`);
     }
     lines.push({

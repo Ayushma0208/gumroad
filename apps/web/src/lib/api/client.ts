@@ -22,6 +22,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "X-Lumen-Client": "web",
       ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),

@@ -35,8 +35,10 @@ const BLOCKED_EXTENSIONS = new Set([
   "dll",
   "com",
   "msi",
-  "js",
-  "php",
+  "ps1",
+  "scr",
+  "vbs",
+  "jar",
 ]);
 
 export function extensionOf(fileName: string) {
@@ -53,7 +55,7 @@ export function assertAllowedProductFile(fileName: string, mimeType: string) {
   if (!allowedMimes) {
     throw badRequest("This file type is not allowed.");
   }
-  if (mimeType && !allowedMimes.includes(mimeType) && mimeType !== "application/octet-stream") {
+  if (mimeType && !allowedMimes.includes(mimeType)) {
     throw badRequest("File type does not match its contents.");
   }
   return { extension, mimeType: mimeType || allowedMimes[0]! };

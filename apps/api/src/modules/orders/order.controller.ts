@@ -14,8 +14,17 @@ function actor(req: Request) {
 
 export async function list(req: Request, res: Response) {
   const user = actor(req);
-  const orders = await listOrdersForUser(user.id, user.role);
-  res.json(success({ orders }));
+  const page = Number(req.query.page ?? 1);
+  const limit = Number(req.query.limit ?? 24);
+  const result = await listOrdersForUser(user.id, user.role, page, limit);
+  // Keep `orders` key for backward-compatible clients; also expose paginated shape.
+  res.json(
+    success({
+      orders: result.items,
+      items: result.items,
+      meta: result.meta,
+    }),
+  );
 }
 
 export async function getById(req: Request, res: Response) {

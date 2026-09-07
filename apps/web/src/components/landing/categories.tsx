@@ -15,8 +15,8 @@ import Link from "next/link";
 import { Container, Section } from "@/components/layout/container";
 import { SectionHeading } from "@/components/layout/section-heading";
 import { FadeIn } from "@/components/motion/fade-in";
+import { listCategories } from "@/lib/api/products";
 import { formatCompactNumber } from "@/lib/format";
-import { categories } from "@/lib/mock/catalog";
 import { cn } from "@/lib/utils";
 import type { CategoryIcon } from "@/types/catalog";
 
@@ -32,7 +32,16 @@ const icons: Record<CategoryIcon, LucideIcon> = {
   productivity: ListChecks,
 };
 
-export function LandingCategories() {
+export async function LandingCategories() {
+  let categories: Awaited<ReturnType<typeof listCategories>> = [];
+  try {
+    categories = await listCategories();
+  } catch {
+    categories = [];
+  }
+
+  if (categories.length === 0) return null;
+
   return (
     <Section id="categories" className="scroll-mt-24 bg-card/40">
       <Container>
@@ -46,8 +55,8 @@ export function LandingCategories() {
         </FadeIn>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
           {categories.map((category, index) => {
-            const Icon = icons[category.icon];
-            const photo = index % 2 === 0;
+            const Icon = icons[category.icon] ?? PenTool;
+            const photo = Boolean(category.imageUrl) && index % 2 === 0;
 
             return (
               <FadeIn key={category.slug} delay={index * 0.04}>
@@ -58,7 +67,7 @@ export function LandingCategories() {
                     photo ? "text-white" : "bg-background",
                   )}
                 >
-                  {photo ? (
+                  {photo && category.imageUrl ? (
                     <>
                       <Image
                         src={category.imageUrl}

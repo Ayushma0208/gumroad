@@ -547,7 +547,7 @@ export async function getCreatorCouponUsage(userId: string, couponId: string) {
 
 /**
  * Atomically record a successful coupon redemption after payment.
- * Safe under webhook replay and concurrent maxUses races.
+ * Locks the coupon row so verify+webhook cannot double-increment usedCount.
  */
 export async function redeemCouponForPaidOrder(
   tx: Prisma.TransactionClient,
@@ -566,28 +566,31 @@ export async function redeemCouponForPaidOrder(
   });
   if (existing) return { redeemed: false, alreadyRedeemed: true };
 
+  await tx.$queryRaw`
+    SELECT id FROM "Coupon" WHERE id = ${input.couponId} FOR UPDATE
+  `;
+
   const coupon = await tx.coupon.findUnique({
     where: { id: input.couponId },
   });
   if (!coupon) return { redeemed: false };
+
+  const again = await tx.couponRedemption.findUnique({
+    where: { orderId: input.orderId },
+    select: { id: true },
+  });
+  if (again) return { redeemed: false, alreadyRedeemed: true };
 
   if (coupon.perUserLimit != null) {
     const usedByCustomer = await tx.couponRedemption.count({
       where: { couponId: coupon.id, userId: input.userId },
     });
     if (usedByCustomer >= coupon.perUserLimit) {
-      // Order already charged — do not fail fulfillment; skip increment if somehow over.
       return { redeemed: false, skipped: "user_limit" };
     }
   }
 
-  const bumped = await tx.$executeRaw`
-    UPDATE "Coupon"
-    SET "usedCount" = "usedCount" + 1, "updatedAt" = NOW()
-    WHERE "id" = ${coupon.id}
-      AND ("maxUses" IS NULL OR "usedCount" < "maxUses")
-  `;
-  if (Number(bumped) !== 1) {
+  if (coupon.maxUses != null && coupon.usedCount >= coupon.maxUses) {
     return { redeemed: false, skipped: "usage_limit" };
   }
 
@@ -609,6 +612,11 @@ export async function redeemCouponForPaidOrder(
     }
     throw error;
   }
+
+  await tx.coupon.update({
+    where: { id: coupon.id },
+    data: { usedCount: { increment: 1 } },
+  });
 
   return { redeemed: true };
 }

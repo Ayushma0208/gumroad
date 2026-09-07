@@ -29,7 +29,6 @@ import {
   useProductStatusMutation,
   useSaveProductMutation,
 } from "@/hooks/use-studio";
-import { categories as mockCategories } from "@/lib/mock/catalog";
 import {
   listProductFiles,
   listProductImages,
@@ -106,7 +105,7 @@ export function ProductEditor({
   const save = useSaveProductMutation(userId);
   const statusMut = useProductStatusMutation(userId);
   const categoriesQuery = useCatalogCategories();
-  const categoryOptions = categoriesQuery.data ?? mockCategories;
+  const categoryOptions = categoriesQuery.data ?? [];
   const showToast = useToastStore((state) => state.show);
   const [step, setStep] = useState(0);
   const [productId, setProductId] = useState(product?.id);

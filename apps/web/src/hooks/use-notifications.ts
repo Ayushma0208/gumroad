@@ -27,12 +27,14 @@ export function useNotifications(params: {
   limit?: number;
   unread?: boolean;
   type?: NotificationType | "all";
+  enabled?: boolean;
 }) {
   const { isAuthenticated } = useAuth();
+  const { enabled = true, ...queryParams } = params;
   return useQuery({
-    queryKey: notificationKeys.list(params),
-    queryFn: () => fetchNotifications(params),
-    enabled: isAuthenticated,
+    queryKey: notificationKeys.list(queryParams),
+    queryFn: () => fetchNotifications(queryParams),
+    enabled: isAuthenticated && enabled,
     refetchOnWindowFocus: true,
   });
 }

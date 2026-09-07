@@ -37,6 +37,7 @@ function folders() {
     productFiles: (productId: string) => `marketplace/products/${productId}/files`,
     creatorAvatar: (creatorId: string) => `marketplace/creators/${creatorId}/avatar`,
     creatorBanner: (creatorId: string) => `marketplace/creators/${creatorId}/banner`,
+    userAvatar: (userId: string) => `marketplace/users/${userId}/avatar`,
   };
 }
 

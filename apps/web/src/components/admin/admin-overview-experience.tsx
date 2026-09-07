@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { AnalyticsRangeControl } from "@/components/studio/analytics-range-control";
-import { ChartTooltip } from "@/components/studio/chart-tooltip";
 import { MetricStat } from "@/components/studio/metric-stat";
 import { AdminPage, AdminPageHeader } from "@/components/admin/admin-page";
 import { StudioQueryError } from "@/components/studio/query-error";
@@ -11,15 +11,19 @@ import { OverviewSkeleton } from "@/components/studio/skeletons";
 import { useAdminOverview } from "@/hooks/use-admin";
 import { formatCompactNumber, formatPrice, formatRelativeDate } from "@/lib/format";
 import type { AnalyticsRangeParams } from "@/types/analytics";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+
+const AdminRevenueChart = dynamic(
+  () =>
+    import("@/components/admin/admin-revenue-chart").then(
+      (mod) => mod.AdminRevenueChart,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 animate-pulse rounded-xl bg-muted/60" aria-hidden />
+    ),
+  },
+);
 
 export function AdminOverviewExperience() {
   const [range, setRange] = useState<AnalyticsRangeParams>({ range: "30d" });
@@ -108,41 +112,7 @@ export function AdminOverviewExperience() {
           Sum of paid order totals (buyer GMV after discounts)
         </p>
         <div className="mt-4 h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chart} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
-              <defs>
-                <linearGradient id="admin-revenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 6" />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                axisLine={false}
-                tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                width={56}
-                tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
-                tickFormatter={(value: number) =>
-                  formatPrice(value, data.currency).replace(/\.00$/, "")
-                }
-              />
-              <Tooltip content={<ChartTooltip currency />} />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                name="Revenue"
-                stroke="var(--brand)"
-                strokeWidth={2}
-                fill="url(#admin-revenue)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <AdminRevenueChart data={chart} currency={data.currency} />
         </div>
       </section>
 

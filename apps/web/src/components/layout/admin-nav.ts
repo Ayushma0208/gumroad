@@ -11,6 +11,7 @@ import {
   Store,
   TicketPercent,
   Users,
+  Wallet,
 } from "lucide-react";
 
 export const adminNav = [
@@ -20,6 +21,7 @@ export const adminNav = [
   { href: "/admin/products", label: "Products", icon: Package, exact: false },
   { href: "/admin/categories", label: "Categories", icon: FolderTree, exact: false },
   { href: "/admin/orders", label: "Orders", icon: Receipt, exact: false },
+  { href: "/admin/payouts", label: "Payouts", icon: Wallet, exact: false },
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent, exact: false },
   { href: "/admin/reviews", label: "Reviews", icon: MessageSquareWarning, exact: false },
   { href: "/admin/reports", label: "Reports", icon: ShieldAlert, exact: false },

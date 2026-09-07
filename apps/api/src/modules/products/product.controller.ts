@@ -36,6 +36,10 @@ export async function featured(req: Request, res: Response) {
     Number(req.query.page) || undefined,
     Number(req.query.limit) || undefined,
   );
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=30, stale-while-revalidate=120",
+  );
   res.json(success(result));
 }
 
@@ -43,6 +47,10 @@ export async function trending(req: Request, res: Response) {
   const result = await listTrendingProducts(
     Number(req.query.page) || undefined,
     Number(req.query.limit) || undefined,
+  );
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=30, stale-while-revalidate=120",
   );
   res.json(success(result));
 }

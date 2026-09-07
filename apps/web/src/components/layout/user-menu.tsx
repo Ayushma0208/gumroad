@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  Bell,
   Heart,
   LayoutDashboard,
   Library,
   LogOut,
   Receipt,
+  Settings2,
   Shield,
   Store,
   UserRound,
@@ -127,9 +129,17 @@ export function UserMenu({
             <Receipt />
             Orders
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push("/profile")}>
+          <DropdownMenuItem onClick={() => router.push("/account")}>
             <UserRound />
-            Profile
+            Your account
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/account/notifications")}>
+            <Bell />
+            Notifications
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/account/security")}>
+            <Settings2 />
+            Settings
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
@@ -229,11 +239,18 @@ export function MobileAuthLinks({ onNavigate }: { onNavigate: () => void }) {
         Orders
       </Link>
       <Link
-        href="/profile"
+        href="/account"
         onClick={onNavigate}
         className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
       >
-        Profile
+        Your account
+      </Link>
+      <Link
+        href="/account/notifications"
+        onClick={onNavigate}
+        className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
+      >
+        Notifications
       </Link>
       <Button
         variant="ghost"

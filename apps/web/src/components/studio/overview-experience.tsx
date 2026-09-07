@@ -8,23 +8,36 @@ import { MetricStat } from "@/components/studio/metric-stat";
 import { OverviewSkeleton } from "@/components/studio/skeletons";
 import { StudioQueryError } from "@/components/studio/query-error";
 import { RecentSales } from "@/components/studio/recent-sales";
-import { RevenueChart } from "@/components/studio/revenue-chart";
 import { StudioPage } from "@/components/studio/studio-page";
 import { TopProducts } from "@/components/studio/top-products";
 import { FadeInOnLoad } from "@/components/motion/fade-in";
 import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useCreatorAnalyticsOverview } from "@/hooks/use-analytics";
+import { useCreatorEarningsSummary } from "@/hooks/use-earnings";
 import { formatCompactNumber, formatPrice } from "@/lib/format";
 import { greetingForHour } from "@/lib/studio/copy";
 import { cn } from "@/lib/utils";
 import type { AnalyticsRangeParams } from "@/types/analytics";
 import type { StudioProduct, StudioSale } from "@/types/studio";
+import dynamic from "next/dynamic";
+
+const RevenueChart = dynamic(
+  () =>
+    import("@/components/studio/revenue-chart").then((mod) => mod.RevenueChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 animate-pulse rounded-xl bg-muted/60" aria-hidden />
+    ),
+  },
+);
 
 export function OverviewExperience() {
   const { user } = useAuth();
   const [range, setRange] = useState<AnalyticsRangeParams>({ range: "30d" });
   const query = useCreatorAnalyticsOverview(range);
+  const earningsQuery = useCreatorEarningsSummary();
   const greeting = useMemo(
     () => greetingForHour(new Date().getHours()),
     [],
@@ -161,6 +174,46 @@ export function OverviewExperience() {
           change={data.metrics.averageOrderValueChange}
         />
       </div>
+
+      {earningsQuery.isSuccess && earningsQuery.data ? (
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Available to withdraw</p>
+            <p className="mt-2 font-display text-2xl tracking-tight">
+              {formatPrice(
+                earningsQuery.data.availableBalance.cents,
+                earningsQuery.data.currency,
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Pending earnings</p>
+            <p className="mt-2 font-display text-2xl tracking-tight">
+              {formatPrice(
+                earningsQuery.data.pendingBalance.cents,
+                earningsQuery.data.currency,
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Paid out</p>
+            <p className="mt-2 font-display text-2xl tracking-tight">
+              {formatPrice(
+                earningsQuery.data.paidOut.cents,
+                earningsQuery.data.currency,
+              )}
+            </p>
+          </div>
+          <div className="flex items-end">
+            <Link
+              href="/dashboard/earnings"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Open earnings
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <section className="mt-12">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

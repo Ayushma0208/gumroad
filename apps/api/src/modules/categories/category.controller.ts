@@ -11,11 +11,19 @@ import type { CreateCategoryInput, UpdateCategoryInput } from "./category.valida
 
 export async function list(_req: Request, res: Response) {
   const categories = await listCategories();
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=60, stale-while-revalidate=300",
+  );
   res.json(success({ categories }));
 }
 
 export async function getBySlug(req: Request, res: Response) {
   const category = await getCategoryBySlug(String(req.params.slug));
+  res.setHeader(
+    "Cache-Control",
+    "public, max-age=60, stale-while-revalidate=300",
+  );
   res.json(success({ category }));
 }
 

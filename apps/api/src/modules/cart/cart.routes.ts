@@ -20,26 +20,26 @@ import {
 } from "./cart.validation";
 
 export const cartRouter = Router();
-const customer = [requireAuth, requireRole("CUSTOMER")] as const;
+const buyer = [requireAuth, requireRole("CUSTOMER", "CREATOR")] as const;
 
-cartRouter.get("/", ...customer, asyncHandler(getCart));
+cartRouter.get("/", ...buyer, asyncHandler(getCart));
 cartRouter.post(
   "/items",
-  ...customer,
+  ...buyer,
   validateBody(addCartItemSchema),
   asyncHandler(addItem),
 );
 cartRouter.patch(
   "/items/:itemId",
-  ...customer,
+  ...buyer,
   validateParams(cartItemParamsSchema),
   validateBody(updateCartItemSchema),
   asyncHandler(updateItem),
 );
 cartRouter.delete(
   "/items/:itemId",
-  ...customer,
+  ...buyer,
   validateParams(cartItemParamsSchema),
   asyncHandler(removeItem),
 );
-cartRouter.delete("/", ...customer, asyncHandler(emptyCart));
+cartRouter.delete("/", ...buyer, asyncHandler(emptyCart));

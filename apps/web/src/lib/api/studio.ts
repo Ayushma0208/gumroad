@@ -4,7 +4,7 @@ import {
   fetchRemoteCategories,
   type ApiProduct,
 } from "@/lib/api/catalog";
-import { requestJson } from "@/lib/api/http";
+import { remoteApiEnabled, requestJson } from "@/lib/api/http";
 import {
   archiveStudioProduct,
   delay,
@@ -35,6 +35,10 @@ import type {
 
 function isAuthMiss(error: unknown) {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
+function allowMockStudioFallback() {
+  return !remoteApiEnabled();
 }
 
 function kindFromType(type: string): StudioProductKind {
@@ -125,14 +129,16 @@ function productPayload(draft: StudioProductDraft, status: StudioProductStatus) 
 }
 
 /**
- * Studio reads still use the mock for sales, customers, analytics, and settings.
- * Product CRUD prefers Express `/api/v1/products` and falls back to the mock
- * when the session is the Next.js mock cookie (not a JWT).
+ * Product CRUD prefers Express `/api/v1/products`.
+ * Mock studio-db is local-demo only when remote API is disabled.
  */
 
 export async function fetchStudioOverview(
   userId: string,
 ): Promise<StudioOverview> {
+  if (!allowMockStudioFallback()) {
+    throw new ApiError(501, "Use creator analytics endpoints for overview.");
+  }
   await delay();
   return getStudioOverview(userId);
 }
@@ -146,6 +152,7 @@ export async function fetchStudioProducts(
     );
     return data.items.map(mapStudioProduct);
   } catch (error) {
+    if (!allowMockStudioFallback()) throw error;
     if (!isAuthMiss(error) && error instanceof ApiError) throw error;
     await delay();
     return listStudioProducts(userId);
@@ -163,6 +170,7 @@ export async function fetchStudioProduct(
     return mapStudioProduct(data.product);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return null;
+    if (!allowMockStudioFallback()) throw error;
     if (!isAuthMiss(error) && error instanceof ApiError) throw error;
     await delay(220);
     return getStudioProduct(userId, productId);
@@ -191,6 +199,7 @@ export async function saveStudioProduct(input: {
     );
     return mapStudioProduct(data.product);
   } catch (error) {
+    if (!allowMockStudioFallback()) throw error;
     if (!isAuthMiss(error) && error instanceof ApiError) throw error;
     await delay(480);
     return upsertStudioProduct(
@@ -228,7 +237,8 @@ export async function duplicateProduct(input: {
         minPriceCents: existing.minPriceCents ?? 0,
       },
     });
-  } catch {
+  } catch (error) {
+    if (!allowMockStudioFallback()) throw error;
     await delay(280);
     return duplicateStudioProduct(input.userId, input.productId);
   }
@@ -245,6 +255,7 @@ export async function archiveProduct(input: {
     );
     return mapStudioProduct(data.product);
   } catch (error) {
+    if (!allowMockStudioFallback()) throw error;
     if (!isAuthMiss(error) && error instanceof ApiError) throw error;
     await delay(220);
     return archiveStudioProduct(input.userId, input.productId);
@@ -261,6 +272,7 @@ export async function removeProduct(input: {
     });
     return true;
   } catch (error) {
+    if (!allowMockStudioFallback()) throw error;
     if (!isAuthMiss(error) && error instanceof ApiError) throw error;
     await delay(220);
     return deleteStudioProduct(input.userId, input.productId);
@@ -292,6 +304,7 @@ export async function updateProductStatus(input: {
     );
     return mapStudioProduct(data.product);
   } catch (error) {
+    if (!allowMockStudioFallback()) throw error;
     if (!isAuthMiss(error) && error instanceof ApiError) throw error;
     await delay(280);
     return setStudioProductStatus(input.userId, input.productId, input.status);
@@ -299,6 +312,9 @@ export async function updateProductStatus(input: {
 }
 
 export async function fetchStudioSales(userId: string): Promise<StudioSale[]> {
+  if (!allowMockStudioFallback()) {
+    throw new ApiError(501, "Use /api/v1/creators/me/analytics/recent-sales.");
+  }
   await delay();
   return listStudioSales(userId);
 }
@@ -306,6 +322,9 @@ export async function fetchStudioSales(userId: string): Promise<StudioSale[]> {
 export async function fetchStudioCustomers(
   userId: string,
 ): Promise<StudioCustomer[]> {
+  if (!allowMockStudioFallback()) {
+    throw new ApiError(501, "Use /api/v1/creators/me/analytics/customers.");
+  }
   await delay();
   return listStudioCustomers(userId);
 }
@@ -313,6 +332,9 @@ export async function fetchStudioCustomers(
 export async function fetchStudioAnalytics(
   userId: string,
 ): Promise<StudioAnalytics> {
+  if (!allowMockStudioFallback()) {
+    throw new ApiError(501, "Use /api/v1/creators/me/analytics/overview.");
+  }
   await delay();
   return getStudioAnalytics(userId);
 }
@@ -320,7 +342,6 @@ export async function fetchStudioAnalytics(
 export async function fetchStudioSettings(
   userId: string,
 ): Promise<StudioSettings> {
-  const fallback = getStudioSettings(userId);
   try {
     const data = await getMyCreator();
     const { creator } = data;
@@ -339,13 +360,14 @@ export async function fetchStudioSettings(
       linkedin: creator.socialLinks.linkedin ?? "",
       youtube: creator.socialLinks.youtube ?? "",
       github: creator.socialLinks.github ?? "",
-      notifySales: fallback.notifySales,
-      notifyProductUpdates: fallback.notifyProductUpdates,
-      notifyWeeklyDigest: fallback.notifyWeeklyDigest,
+      notifySales: true,
+      notifyProductUpdates: true,
+      notifyWeeklyDigest: false,
     };
   } catch (error) {
+    if (!allowMockStudioFallback()) throw error;
     if (isAuthMiss(error)) throw error;
-    return fallback;
+    return getStudioSettings(userId);
   }
 }
 
@@ -388,6 +410,12 @@ export async function updateStudioSettings(input: {
 }
 
 export async function deactivateStore(userId: string): Promise<StudioSettings> {
+  if (!allowMockStudioFallback()) {
+    throw new ApiError(
+      501,
+      "Store deactivation is not available via mock path in production.",
+    );
+  }
   await delay(500);
   const current = getStudioSettings(userId);
   return saveStudioSettings(userId, {
