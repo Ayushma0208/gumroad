@@ -1,23 +1,74 @@
 import { Router } from "express";
 import { optionalAuth, requireAuth } from "../../middleware/auth.middleware";
+import { requireRole } from "../../middleware/role.middleware";
 import {
   validateBody,
+  validateParams,
   validateQuery,
 } from "../../middleware/validation.middleware";
 import { asyncHandler } from "../../utils/async-handler";
-import { checkSlug, onboard } from "./creator.controller";
-import { onboardCreatorSchema, slugQuerySchema } from "./creator.schema";
-import { createAvatar } from "../media/media.controller";
-import { uploadAvatarMiddleware } from "../media/upload.middleware";
-import { requireRole } from "../../middleware/role.middleware";
+import { createAvatar, createBanner } from "../media/media.controller";
+import {
+  listMine as listCreatorReviews,
+} from "../reviews/review.controller";
+import {
+  creatorReviewsQuerySchema,
+} from "../reviews/review.schema";
+import {
+  uploadAvatarMiddleware,
+  uploadBannerMiddleware,
+} from "../media/upload.middleware";
+import {
+  checkSlug,
+  getBySlug,
+  getMe,
+  listCreators,
+  listProducts,
+  onboard,
+  updateMe,
+} from "./creator.controller";
+import {
+  creatorProductsQuerySchema,
+  creatorSlugParamSchema,
+  listCreatorsQuerySchema,
+  onboardCreatorSchema,
+  slugQuerySchema,
+  updateCreatorProfileSchema,
+} from "./creator.schema";
 
 export const creatorRouter = Router();
 
+creatorRouter.get(
+  "/",
+  validateQuery(listCreatorsQuerySchema),
+  asyncHandler(listCreators),
+);
 creatorRouter.get(
   "/store-slug",
   optionalAuth,
   validateQuery(slugQuerySchema),
   asyncHandler(checkSlug),
+);
+creatorRouter.get(
+  "/slug/check",
+  optionalAuth,
+  validateQuery(slugQuerySchema),
+  asyncHandler(checkSlug),
+);
+creatorRouter.get("/me", requireAuth, requireRole("CREATOR", "ADMIN"), asyncHandler(getMe));
+creatorRouter.get(
+  "/me/reviews",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  validateQuery(creatorReviewsQuerySchema),
+  asyncHandler(listCreatorReviews),
+);
+creatorRouter.patch(
+  "/me",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  validateBody(updateCreatorProfileSchema),
+  asyncHandler(updateMe),
 );
 creatorRouter.post(
   "/onboard",
@@ -31,4 +82,22 @@ creatorRouter.post(
   requireRole("CREATOR", "ADMIN"),
   uploadAvatarMiddleware,
   asyncHandler(createAvatar),
+);
+creatorRouter.post(
+  "/me/banner",
+  requireAuth,
+  requireRole("CREATOR", "ADMIN"),
+  uploadBannerMiddleware,
+  asyncHandler(createBanner),
+);
+creatorRouter.get(
+  "/:slug/products",
+  validateParams(creatorSlugParamSchema),
+  validateQuery(creatorProductsQuerySchema),
+  asyncHandler(listProducts),
+);
+creatorRouter.get(
+  "/:slug",
+  validateParams(creatorSlugParamSchema),
+  asyncHandler(getBySlug),
 );

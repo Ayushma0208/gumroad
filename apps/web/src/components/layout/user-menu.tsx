@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Heart,
   LayoutDashboard,
   Library,
   LogOut,
@@ -118,6 +119,10 @@ export function UserMenu({
             <Library />
             My library
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/wishlist")}>
+            <Heart />
+            Wishlist
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/orders")}>
             <Receipt />
             Orders
@@ -208,6 +213,13 @@ export function MobileAuthLinks({ onNavigate }: { onNavigate: () => void }) {
         className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
       >
         My library
+      </Link>
+      <Link
+        href="/wishlist"
+        onClick={onNavigate}
+        className="rounded-lg px-2 py-3 text-base text-foreground hover:bg-muted"
+      >
+        Wishlist
       </Link>
       <Link
         href="/orders"

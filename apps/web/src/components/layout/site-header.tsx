@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Search, ShoppingBag } from "lucide-react";
+import { Heart, Menu, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { navLinks } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { useCartCount } from "@/hooks/use-cart";
+import { useWishlistCount } from "@/hooks/use-wishlist";
 import { isCreatorRole } from "@/types/auth";
 
 export function SiteHeader() {
@@ -26,7 +27,8 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const cartCount = useCartCount();
-  const { user, isLoading } = useAuth();
+  const wishlistCount = useWishlistCount();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const creator = user ? isCreatorRole(user.role) : false;
 
   useEffect(() => {
@@ -83,6 +85,27 @@ export function SiteHeader() {
             <Search />
           </Link>
           <ThemeToggle />
+          {isAuthenticated ? (
+            <Link
+              href="/wishlist"
+              aria-label={
+                wishlistCount > 0
+                  ? `Wishlist, ${wishlistCount} saved`
+                  : "Wishlist"
+              }
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "relative",
+              )}
+            >
+              <Heart />
+              {wishlistCount > 0 ? (
+                <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-brand text-[10px] font-medium text-brand-foreground">
+                  {wishlistCount > 9 ? "9+" : wishlistCount}
+                </span>
+              ) : null}
+            </Link>
+          ) : null}
           <Link
             href="/cart"
             aria-label={`Cart, ${cartCount} items`}

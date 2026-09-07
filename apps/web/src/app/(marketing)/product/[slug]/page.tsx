@@ -12,9 +12,9 @@ import {
   ProductHeroCopy,
   ProductIncludes,
   ProductPriceNote,
-  ProductReviews,
 } from "@/components/product/product-sections";
-import { getCreatorProfile, profileFromSummary } from "@/lib/api/creators";
+import { ProductReviewsSection } from "@/components/product/product-reviews-section";
+import { getCreatorBySlug, profileFromSummary, toCatalogCreator } from "@/lib/api/creators";
 import {
   getProductBySlug,
   listProductSlugs,
@@ -54,12 +54,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [related, creatorProfile] = await Promise.all([
+  const [related, creatorPayload] = await Promise.all([
     listRelatedProducts(product),
-    getCreatorProfile(product.creator.slug),
+    getCreatorBySlug(product.creator.slug),
   ]);
   const creator =
-    creatorProfile ?? profileFromSummary(product.creator, related.length + 1);
+    creatorPayload
+      ? toCatalogCreator(creatorPayload)
+      : profileFromSummary(product.creator, related.length + 1);
 
   return (
     <>
@@ -108,11 +110,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </div>
             </section>
           ) : null}
-          <ProductReviews
-            rating={product.rating}
-            reviewCount={product.reviewCount}
-            reviews={product.reviews}
-          />
+          <ProductReviewsSection productId={product.id} productSlug={product.slug} />
         </div>
 
         {related.length > 0 ? (

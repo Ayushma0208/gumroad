@@ -5,14 +5,19 @@ import { LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Field } from "@/components/studio/field";
-import { AvatarUploader } from "@/components/studio/media-uploader";
+import { AvatarUploader, BannerUploader } from "@/components/studio/media-uploader";
 import { StudioQueryError } from "@/components/studio/query-error";
 import { TableSkeleton } from "@/components/studio/skeletons";
+import {
+  SocialLinksForm,
+  StoreProfileForm,
+  StoreSlugInput,
+  StoreUrlCard,
+} from "@/components/studio/store-settings-forms";
 import { StudioPage } from "@/components/studio/studio-page";
-import { Textarea } from "@/components/studio/textarea";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
+import { useUpdateCreatorBranding } from "@/hooks/use-creator";
 import {
   useDeactivateStoreMutation,
   useSaveSettingsMutation,
@@ -24,6 +29,7 @@ import {
 } from "@/lib/studio/schema";
 import { useToastStore } from "@/stores/toast-store";
 import { cn } from "@/lib/utils";
+import { ApiError } from "@/lib/api/client";
 
 export function SettingsExperience() {
   const { user } = useAuth();
@@ -52,7 +58,7 @@ export function SettingsExperience() {
     <StudioPage className="max-w-2xl">
       <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Settings</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        How buyers see the store, and how we write to you.
+        Storefront identity, branding, and how buyers find you.
       </p>
       <SettingsForm userId={user.id} defaultValues={query.data} />
     </StudioPage>
@@ -68,8 +74,10 @@ function SettingsForm({
 }) {
   const save = useSaveSettingsMutation(userId);
   const deactivate = useDeactivateStoreMutation(userId);
+  const branding = useUpdateCreatorBranding();
   const showToast = useToastStore((state) => state.show);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const form = useForm<StudioSettingsValues>({
     resolver: zodResolver(studioSettingsSchema),
@@ -78,6 +86,7 @@ function SettingsForm({
   });
 
   const avatarUrl = useWatch({ control: form.control, name: "avatarUrl" });
+  const bannerUrl = useWatch({ control: form.control, name: "bannerUrl" });
   const notifySales = useWatch({ control: form.control, name: "notifySales" });
   const notifyProductUpdates = useWatch({
     control: form.control,
@@ -87,6 +96,7 @@ function SettingsForm({
     control: form.control,
     name: "notifyWeeklyDigest",
   });
+  const slug = useWatch({ control: form.control, name: "slug" });
 
   useEffect(() => {
     form.reset(defaultValues);
@@ -96,82 +106,54 @@ function SettingsForm({
     <form
       className="mt-10 space-y-12"
       onSubmit={form.handleSubmit(async (values) => {
-        await save.mutateAsync(values);
-        showToast({ title: "Settings saved" });
+        setServerError(null);
+        try {
+          await save.mutateAsync({
+            ...values,
+            storeDescription: values.description || values.storeDescription,
+          });
+          showToast({ title: "Settings saved" });
+        } catch (error) {
+          const message =
+            error instanceof ApiError ? error.message : "Could not save settings.";
+          setServerError(message);
+        }
       })}
       noValidate
     >
+      <StoreUrlCard slug={slug || defaultValues.slug} />
+
+      <StoreProfileForm register={form.register} errors={form.formState.errors} />
+      <StoreSlugInput form={form} currentSlug={defaultValues.slug} />
+
       <section>
-        <h2 className="text-base font-medium">Profile</h2>
+        <h2 className="text-base font-medium">Store branding</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Name and portrait on your public page.
+          Avatar and banner use the same image upload as your products.
         </p>
-        <div className="mt-5 space-y-5">
+        <div className="mt-5 space-y-6">
           <Field label="Avatar">
             <AvatarUploader
               value={avatarUrl}
-              onChange={(url) => form.setValue("avatarUrl", url, { shouldDirty: true })}
+              onChange={(url) => {
+                form.setValue("avatarUrl", url, { shouldDirty: true });
+                branding.invalidate();
+              }}
             />
           </Field>
-          <Field
-            id="displayName"
-            label="Display name"
-            error={form.formState.errors.displayName?.message}
-          >
-            <Input
-              id="displayName"
-              className="h-11 rounded-xl"
-              {...form.register("displayName")}
+          <Field label="Banner">
+            <BannerUploader
+              value={bannerUrl}
+              onChange={(url) => {
+                form.setValue("bannerUrl", url, { shouldDirty: true });
+                branding.invalidate();
+              }}
             />
-          </Field>
-          <Field id="bio" label="Bio" error={form.formState.errors.bio?.message}>
-            <Textarea id="bio" {...form.register("bio")} />
           </Field>
         </div>
       </section>
 
-      <section>
-        <h2 className="text-base font-medium">Store</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The storefront URL and how it reads on Discover.
-        </p>
-        <div className="mt-5 space-y-5">
-          <Field
-            id="storeName"
-            label="Store name"
-            error={form.formState.errors.storeName?.message}
-          >
-            <Input
-              id="storeName"
-              className="h-11 rounded-xl"
-              {...form.register("storeName")}
-            />
-          </Field>
-          <Field
-            id="slug"
-            label="Store URL"
-            error={form.formState.errors.slug?.message}
-          >
-            <div className="flex overflow-hidden rounded-xl border border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
-              <span className="flex items-center bg-muted px-3 text-sm text-muted-foreground">
-                lumen.app/
-              </span>
-              <input
-                id="slug"
-                className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
-                {...form.register("slug")}
-              />
-            </div>
-          </Field>
-          <Field
-            id="storeDescription"
-            label="Store description"
-            error={form.formState.errors.storeDescription?.message}
-          >
-            <Textarea id="storeDescription" {...form.register("storeDescription")} />
-          </Field>
-        </div>
-      </section>
+      <SocialLinksForm register={form.register} errors={form.formState.errors} />
 
       <section>
         <h2 className="text-base font-medium">Preferences</h2>
@@ -202,9 +184,15 @@ function SettingsForm({
         </div>
       </section>
 
+      {serverError ? (
+        <p className="text-sm text-destructive" role="alert">
+          {serverError}
+        </p>
+      ) : null}
+
       <Button type="submit" size="lg" className="rounded-xl" disabled={save.isPending}>
         {save.isPending ? <LoaderCircle className="animate-spin" /> : null}
-        Save settings
+        {save.isPending ? "Saving…" : "Save settings"}
       </Button>
 
       <section className="rounded-2xl border border-destructive/30 p-5">

@@ -75,3 +75,9 @@ export function uploadCreatorAvatar(file: File) {
   body.append("file", file);
   return requestForm<{ avatarUrl: string }>("/api/v1/creators/me/avatar", body);
 }
+
+export function uploadCreatorBanner(file: File) {
+  const body = new FormData();
+  body.append("file", file);
+  return requestForm<{ bannerUrl: string | null }>("/api/v1/creators/me/banner", body);
+}

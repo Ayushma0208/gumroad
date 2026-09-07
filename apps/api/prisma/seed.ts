@@ -9,10 +9,14 @@ const img = (id: string, w = 1600) =>
 const DEV_PASSWORD = "password12";
 
 async function main() {
+  await prisma.reviewReply.deleteMany();
   await prisma.review.deleteMany();
+  await prisma.download.deleteMany();
+  await prisma.purchase.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.wishlistItem.deleteMany();
   await prisma.cartItem.deleteMany();
   await prisma.cart.deleteMany();
   await prisma.productFile.deleteMany();
@@ -101,8 +105,14 @@ async function main() {
           storeName: "Northline Studio",
           slug: "mira",
           bio: "Typography and interface systems for studios that still print.",
+          description:
+            "Northline makes Figma kits, type specimens, and prompt libraries for product teams who still care how software feels. Everything is built to ship, not to sit in a moodboard.",
+          website: "https://northline.studio",
+          instagram: "https://instagram.com/northline",
+          twitter: "https://x.com/northline",
           category: "design",
           avatar: img("photo-1494790108377-be9c29b29330", 200),
+          banner: img("photo-1561070791-2526d30994b5", 1600),
         },
       },
     },
@@ -122,8 +132,14 @@ async function main() {
           storeName: "Mori Atelier",
           slug: "kenji",
           bio: "Application architecture, sold as repos you can actually ship.",
+          description:
+            "Mori Atelier publishes production-grade starters and architecture kits. Each product is a repo you can clone, not a slide deck about best practices.",
+          website: "https://moriatelier.dev",
+          github: "https://github.com/kenjimori",
+          twitter: "https://x.com/kenjimori",
           category: "development",
           avatar: img("photo-1500648767791-00dcc994a43e", 200),
+          banner: img("photo-1555066931-4365d14bab8c", 1600),
         },
       },
     },
@@ -143,8 +159,14 @@ async function main() {
           storeName: "Voss Atelier",
           slug: "julian",
           bio: "Editorial photography and film-inspired color science.",
+          description:
+            "Color science, grain, and lighting notes from editorial sets. LUTs and stills are graded the same way Julian works on paid commissions.",
+          website: "https://vossatelier.com",
+          instagram: "https://instagram.com/julianvoss",
+          youtube: "https://youtube.com/@vossatelier",
           category: "photography",
           avatar: img("photo-1507003211169-0a1dd7228f2d", 200),
+          banner: img("photo-1492693429561-1c69d25df57e", 1600),
         },
       },
     },
@@ -164,8 +186,13 @@ async function main() {
           storeName: "Raman Field Notes",
           slug: "asha",
           bio: "Launch systems and sample libraries for independent studios.",
+          description:
+            "Field notes from launching independent products: positioning worksheets, email sequences, and sample libraries you can actually send.",
+          linkedin: "https://linkedin.com/in/asharaman",
+          twitter: "https://x.com/asharaman",
           category: "marketing",
           avatar: img("photo-1531123897727-8f129e1688ce", 200),
+          banner: img("photo-1454165804606-c3d57bc86b40", 1600),
         },
       },
     },
@@ -714,6 +741,7 @@ async function main() {
       productId: northline.id,
       userId: leah.id,
       rating: 5,
+      title: "The type scale alone is worth it",
       comment: "The type scale alone is worth it. Feels like a studio, not a kit dump.",
     },
   });
@@ -723,6 +751,7 @@ async function main() {
       productId: atlas.id,
       userId: owen.id,
       rating: 5,
+      title: "Shipped a client repo the same afternoon",
       comment: "Started a client repo the same afternoon. The holes were already dug.",
     },
   });
@@ -732,6 +761,7 @@ async function main() {
       productId: campaign.id,
       userId: sofia.id,
       rating: 5,
+      title: "A launch kit that doesn’t smell like a funnel",
       comment: "Finally a launch kit that does not smell like a funnel course.",
     },
   });
@@ -741,6 +771,7 @@ async function main() {
       productId: promptAtelier.id,
       userId: sofia.id,
       rating: 4,
+      title: "Negative vocabularies saved a week",
       comment: "The negative vocabularies saved a week of guessing.",
     },
   });
@@ -752,6 +783,14 @@ async function main() {
         create: [{ productId: northline.id, quantity: 1 }],
       },
     },
+  });
+
+  await prisma.wishlistItem.createMany({
+    data: [
+      { userId: leah.id, productId: atlas.id },
+      { userId: leah.id, productId: promptAtelier.id },
+      { userId: owen.id, productId: northline.id },
+    ],
   });
 
   console.log("Seeded Lumen development data.");

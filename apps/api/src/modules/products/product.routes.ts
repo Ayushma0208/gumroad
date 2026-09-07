@@ -3,6 +3,7 @@ import { optionalAuth, requireAuth } from "../../middleware/auth.middleware";
 import { requireRole } from "../../middleware/role.middleware";
 import {
   validateBody,
+  validateParams,
   validateQuery,
 } from "../../middleware/validation.middleware";
 import { asyncHandler } from "../../utils/async-handler";
@@ -20,6 +21,17 @@ import {
   trending,
   update,
 } from "./product.controller";
+import {
+  create as createReview,
+  eligibility as reviewEligibility,
+  listForProduct as listProductReviews,
+  summary as reviewSummary,
+} from "../reviews/review.controller";
+import {
+  createReviewSchema,
+  listReviewsQuerySchema,
+  productIdParamSchema,
+} from "../reviews/review.schema";
 import {
   createFile,
   createImage,
@@ -54,6 +66,30 @@ productRouter.get(
   asyncHandler(mine),
 );
 productRouter.get("/slug/:slug", asyncHandler(getBySlug));
+productRouter.get(
+  "/:productId/reviews/summary",
+  validateParams(productIdParamSchema),
+  asyncHandler(reviewSummary),
+);
+productRouter.get(
+  "/:productId/reviews/eligibility",
+  optionalAuth,
+  validateParams(productIdParamSchema),
+  asyncHandler(reviewEligibility),
+);
+productRouter.get(
+  "/:productId/reviews",
+  validateParams(productIdParamSchema),
+  validateQuery(listReviewsQuerySchema),
+  asyncHandler(listProductReviews),
+);
+productRouter.post(
+  "/:productId/reviews",
+  requireAuth,
+  validateParams(productIdParamSchema),
+  validateBody(createReviewSchema),
+  asyncHandler(createReview),
+);
 productRouter.get("/:id/related", asyncHandler(related));
 productRouter.get(
   "/:productId/files",

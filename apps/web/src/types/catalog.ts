@@ -71,6 +71,37 @@ export type FeaturedCreator = CreatorSummary & {
   followerCount: number;
 };
 
+export type CreatorSocialLinks = {
+  instagram?: string;
+  twitter?: string;
+  linkedin?: string;
+  youtube?: string;
+  github?: string;
+};
+
+export type CreatorStore = {
+  id: string;
+  storeName: string;
+  displayName: string;
+  slug: string;
+  bio: string;
+  description: string | null;
+  avatar: string | null;
+  banner: string | null;
+  website: string | null;
+  socialLinks: CreatorSocialLinks;
+  category: string | null;
+};
+
+export type CreatorStorePayload = {
+  creator: CreatorStore;
+  stats: {
+    productCount: number;
+    averageRating?: number;
+    reviewCount?: number;
+  };
+};
+
 export type CreatorProfile = FeaturedCreator;
 
 export type IncludeIcon =

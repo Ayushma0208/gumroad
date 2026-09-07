@@ -3,12 +3,12 @@ import Link from "next/link";
 import { Container, Section } from "@/components/layout/container";
 import { SectionHeading } from "@/components/layout/section-heading";
 import { FadeIn } from "@/components/motion/fade-in";
-import { formatCompactNumber, formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import {
   featuredCreators,
   getFeaturedProductForCreator,
 } from "@/lib/mock/catalog";
-import { productPath } from "@/lib/paths";
+import { creatorPath, productPath } from "@/lib/paths";
 
 export function FeaturedCreators() {
   return (
@@ -29,7 +29,7 @@ export function FeaturedCreators() {
               <FadeIn key={creator.id} delay={index * 0.06}>
                 <article className="group grid overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                   <Link
-                    href={`/creators/${creator.slug}`}
+                    href={creatorPath(creator.slug)}
                     className="flex flex-col p-5 sm:p-6"
                   >
                     <span className="relative size-14 overflow-hidden rounded-full bg-muted">
@@ -48,7 +48,6 @@ export function FeaturedCreators() {
                       {creator.bio}
                     </p>
                     <p className="mt-4 text-xs tracking-wide text-muted-foreground uppercase">
-                      {formatCompactNumber(creator.followerCount)} following ·{" "}
                       {creator.productCount} products
                     </p>
                   </Link>

@@ -5,6 +5,13 @@ import type { ReactNode } from "react";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+/**
+ * Keep SSR / pre-hydration paint readable. Never start at opacity 0 —
+ * if client JS is slow or fails, opacity:0 leaves a blank page under the nav.
+ */
+const enter = { opacity: 0.96, y: 14 };
+const visible = { opacity: 1, y: 0 };
+
 export function FadeIn({
   children,
   className,
@@ -23,8 +30,8 @@ export function FadeIn({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={enter}
+      whileInView={visible}
       viewport={{ once: true, margin: "-64px" }}
       transition={{ duration: 0.45, delay, ease }}
     >
@@ -51,8 +58,8 @@ export function FadeInOnLoad({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={enter}
+      animate={visible}
       transition={{ duration: 0.5, delay, ease }}
     >
       {children}

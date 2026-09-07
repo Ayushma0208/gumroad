@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { WishlistButton } from "@/components/wishlist/wishlist-button";
 import { useProductCart } from "@/hooks/use-product-cart";
 import { PRODUCT_TYPE_LABELS } from "@/lib/catalog/query";
 import { formatPrice } from "@/lib/format";
@@ -126,6 +127,11 @@ export function ProductPurchaseCard({
             Add to bag
           </Button>
         )}
+        <WishlistButton
+          productId={product.id}
+          variant="label"
+          className="w-full"
+        />
       </div>
 
       <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">

@@ -21,7 +21,7 @@ export function Field({
       </label>
       {children}
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p id={id ? `${id}-error` : undefined} className="text-sm text-destructive" role="alert">
           {error}
         </p>
       ) : hint ? (

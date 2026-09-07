@@ -1,3 +1,5 @@
+import Link from "next/link";
+import Image from "next/image";
 import {
   AudioLines,
   BookOpen,
@@ -13,8 +15,7 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import { CreatorAvatar } from "@/components/creator/creator-avatar";
 import { StarRating } from "@/components/product/star-rating";
 import { PRODUCT_TYPE_LABELS } from "@/lib/catalog/query";
 import { formatCompactNumber, formatDate, formatPrice } from "@/lib/format";
@@ -79,26 +80,33 @@ export function ProductHeroCopy({
           </span>
         </span>
       </div>
-      <Link
-        href={creatorPath(product.creator.slug)}
-        className="mt-6 inline-flex items-center gap-3"
-      >
-        <span className="relative size-10 overflow-hidden rounded-full bg-muted">
-          <Image
+      <div className="mt-6">
+        <p className="text-xs font-medium tracking-[0.16em] text-muted-foreground uppercase">
+          Created by
+        </p>
+        <Link
+          href={creatorPath(product.creator.slug)}
+          className="mt-3 inline-flex items-center gap-3 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          <CreatorAvatar
             src={product.creator.avatarUrl}
-            alt=""
-            fill
-            sizes="40px"
-            className="object-cover"
+            name={product.creator.name}
+            size="md"
           />
-        </span>
-        <span>
-          <span className="block text-sm font-medium">{product.creator.name}</span>
-          <span className="text-sm text-muted-foreground">
-            {product.creator.headline}
+          <span>
+            <span className="block text-sm font-medium">{product.creator.name}</span>
+            <span className="text-sm text-muted-foreground">
+              @{product.creator.slug}
+            </span>
           </span>
-        </span>
-      </Link>
+        </Link>
+        <Link
+          href={creatorPath(product.creator.slug)}
+          className="mt-3 inline-flex items-center text-sm text-brand hover:text-foreground"
+        >
+          View store →
+        </Link>
+      </div>
     </div>
   );
 }

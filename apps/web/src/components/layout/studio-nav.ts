@@ -1,6 +1,7 @@
 import {
   BarChart3,
   LayoutDashboard,
+  MessageSquare,
   Package,
   Receipt,
   Settings,
@@ -10,6 +11,7 @@ import {
 export const studioNav = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/products", label: "Products", icon: Package, exact: false },
+  { href: "/dashboard/reviews", label: "Reviews", icon: MessageSquare, exact: false },
   { href: "/dashboard/sales", label: "Sales", icon: Receipt, exact: false },
   { href: "/dashboard/customers", label: "Customers", icon: Users, exact: false },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: false },

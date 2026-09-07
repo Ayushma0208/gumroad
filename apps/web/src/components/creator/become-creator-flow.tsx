@@ -252,7 +252,7 @@ export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
                 </label>
                 <div className="flex overflow-hidden rounded-xl border border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
                   <span className="flex items-center bg-muted px-3 text-sm text-muted-foreground">
-                    lumen.app/
+                    lumen.app/creator/
                   </span>
                   <input
                     id="slug"
@@ -510,7 +510,7 @@ function StorePreview({
       </div>
       <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{bio}</p>
       <p className="mt-6 font-mono text-xs text-muted-foreground">
-        lumen.app/{slug}
+        lumen.app/creator/{slug}
       </p>
     </aside>
   );

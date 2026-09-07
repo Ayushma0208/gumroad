@@ -52,6 +52,11 @@ enum PaymentProvider {
   STRIPE
 }
 
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -68,25 +73,34 @@ model User {
   purchases      Purchase[]
   reviews        Review[]
   downloads      Download[]
+  wishlistItems  WishlistItem[]
 }
 
 model CreatorProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  displayName String
-  storeName   String
-  slug        String   @unique
-  bio         String
-  avatar      String?
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName    String
+  storeName      String
+  slug           String   @unique
+  bio            String
+  description    String?
+  avatar         String?
   avatarPublicId String?
-  banner      String?
+  banner         String?
   bannerPublicId String?
-  category    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  website        String?
+  instagram      String?
+  twitter        String?
+  linkedin       String?
+  youtube        String?
+  github         String?
+  category       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  products Product[]
+  products     Product[]
+  reviewReplies ReviewReply[]
 
   @@index([slug])
 }
@@ -126,13 +140,14 @@ model Product {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  images     ProductImage[]
-  files      ProductFile[]
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  purchases  Purchase[]
-  reviews    Review[]
-  downloads  Download[]
+  images        ProductImage[]
+  files         ProductFile[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  purchases     Purchase[]
+  reviews       Review[]
+  downloads      Download[]
+  wishlistItems WishlistItem[]
 
   @@index([creatorId])
   @@index([categoryId])
@@ -182,6 +197,20 @@ model ProductFile {
   @@index([publicId])
 }
 
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@index([userId, createdAt])
+}
+
 model Cart {
   id         String     @id @default(cuid())
   customerId String     @unique
@@ -220,6 +249,7 @@ model Order {
   payment     Payment?
   purchases   Purchase[]
   downloads   Download[]
+  reviews     Review[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -300,17 +330,39 @@ model Download {
 }
 
 model Review {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   productId String
   userId    String
+  orderId   String?
   rating    Int
+  title     String
   comment   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    ReviewStatus @default(PUBLISHED)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reply     ReviewReply?
 
-  @@unique([productId, userId])
+  @@unique([userId, productId])
   @@index([productId])
   @@index([userId])
+  @@index([orderId])
+  @@index([status])
+  @@index([productId, status])
+  @@index([createdAt])
+}
+
+model ReviewReply {
+  id        String         @id @default(cuid())
+  reviewId  String         @unique
+  creatorId String
+  comment   String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  review    Review         @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  creator   CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+
+  @@index([creatorId])
 }

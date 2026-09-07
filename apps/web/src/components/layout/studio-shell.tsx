@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, PanelLeft, Store } from "lucide-react";
+import { ArrowUpRight, LogOut, Menu, PanelLeft, Store } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -21,6 +21,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAuth, useLogoutMutation } from "@/hooks/use-auth";
+import { creatorPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 
 export function StudioShell({ children }: { children: ReactNode }) {
@@ -29,6 +30,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
   const storeName = user?.creatorProfile?.storeName;
+  const storeSlug = user?.creatorProfile?.slug;
 
   function toggleCollapsed() {
     setCollapsed((current) => {
@@ -144,11 +146,25 @@ export function StudioShell({ children }: { children: ReactNode }) {
               {storeName ?? "Your store"}
             </p>
             <div className="flex items-center gap-1">
+              {storeSlug ? (
+                <a
+                  href={creatorPath(storeSlug)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "hidden sm:inline-flex",
+                  )}
+                >
+                  View store
+                  <ArrowUpRight />
+                </a>
+              ) : null}
               <Link
                 href="/discover"
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "sm" }),
-                  "hidden sm:inline-flex",
+                  "hidden md:inline-flex",
                 )}
               >
                 Marketplace

@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/client";
+import { getMyCreator, updateCreatorProfile } from "@/lib/api/creators";
 import {
   fetchRemoteCategories,
   type ApiProduct,
@@ -319,16 +320,71 @@ export async function fetchStudioAnalytics(
 export async function fetchStudioSettings(
   userId: string,
 ): Promise<StudioSettings> {
-  await delay(200);
-  return getStudioSettings(userId);
+  const fallback = getStudioSettings(userId);
+  try {
+    const data = await getMyCreator();
+    const { creator } = data;
+    return {
+      displayName: creator.displayName,
+      bio: creator.bio,
+      description: creator.description ?? "",
+      avatarUrl: creator.avatar ?? "",
+      bannerUrl: creator.banner ?? "",
+      storeName: creator.storeName,
+      slug: creator.slug,
+      storeDescription: creator.description ?? creator.bio,
+      website: creator.website ?? "",
+      instagram: creator.socialLinks.instagram ?? "",
+      twitter: creator.socialLinks.twitter ?? "",
+      linkedin: creator.socialLinks.linkedin ?? "",
+      youtube: creator.socialLinks.youtube ?? "",
+      github: creator.socialLinks.github ?? "",
+      notifySales: fallback.notifySales,
+      notifyProductUpdates: fallback.notifyProductUpdates,
+      notifyWeeklyDigest: fallback.notifyWeeklyDigest,
+    };
+  } catch (error) {
+    if (isAuthMiss(error)) throw error;
+    return fallback;
+  }
 }
 
 export async function updateStudioSettings(input: {
   userId: string;
   settings: StudioSettings;
 }): Promise<StudioSettings> {
-  await delay(420);
-  return saveStudioSettings(input.userId, input.settings);
+  const saved = await updateCreatorProfile({
+    displayName: input.settings.displayName,
+    storeName: input.settings.storeName,
+    slug: input.settings.slug,
+    bio: input.settings.bio,
+    description: input.settings.description || input.settings.storeDescription || null,
+    website: input.settings.website || null,
+    instagram: input.settings.instagram || null,
+    twitter: input.settings.twitter || null,
+    linkedin: input.settings.linkedin || null,
+    youtube: input.settings.youtube || null,
+    github: input.settings.github || null,
+  });
+  const next: StudioSettings = {
+    ...input.settings,
+    displayName: saved.creator.displayName,
+    storeName: saved.creator.storeName,
+    slug: saved.creator.slug,
+    bio: saved.creator.bio,
+    description: saved.creator.description ?? "",
+    storeDescription: saved.creator.description ?? input.settings.storeDescription,
+    avatarUrl: saved.creator.avatar ?? input.settings.avatarUrl,
+    bannerUrl: saved.creator.banner ?? input.settings.bannerUrl,
+    website: saved.creator.website ?? "",
+    instagram: saved.creator.socialLinks.instagram ?? "",
+    twitter: saved.creator.socialLinks.twitter ?? "",
+    linkedin: saved.creator.socialLinks.linkedin ?? "",
+    youtube: saved.creator.socialLinks.youtube ?? "",
+    github: saved.creator.socialLinks.github ?? "",
+  };
+  saveStudioSettings(input.userId, next);
+  return next;
 }
 
 export async function deactivateStore(userId: string): Promise<StudioSettings> {

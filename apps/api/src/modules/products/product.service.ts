@@ -24,7 +24,7 @@ const productInclude = {
   files: {
     select: { id: true, fileName: true, fileSize: true, mimeType: true, format: true },
   },
-  reviews: { select: { rating: true } },
+  reviews: { where: { status: "PUBLISHED" as const }, select: { rating: true } },
   _count: {
     select: {
       files: true,
@@ -84,6 +84,8 @@ function publicWhere(filters: ListProductsQuery): Prisma.ProductWhereInput {
   const search = (filters.search ?? filters.q)?.trim();
   return {
     status: "PUBLISHED",
+    ...(filters.creatorSlug ? { creator: { slug: filters.creatorSlug } } : {}),
+    ...(filters.featured === true ? { featured: true } : {}),
     ...(filters.category ? { category: { slug: filters.category } } : {}),
     ...(filters.productType ? { productType: filters.productType } : {}),
     ...(filters.minPrice !== undefined || filters.maxPrice !== undefined
@@ -110,6 +112,8 @@ function orderBy(sort: string): Prisma.ProductOrderByWithRelationInput[] {
   switch (sort) {
     case "newest":
       return [{ createdAt: "desc" }];
+    case "featured":
+      return [{ featured: "desc" }, { createdAt: "desc" }];
     case "price_asc":
       return [{ price: "asc" }];
     case "price_desc":

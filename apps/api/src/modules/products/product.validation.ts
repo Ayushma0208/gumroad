@@ -81,6 +81,7 @@ export const listProductsQuerySchema = z.object({
       .enum([
         "popular",
         "newest",
+        "featured",
         "price_asc",
         "price_desc",
         "rating",
@@ -89,6 +90,12 @@ export const listProductsQuerySchema = z.object({
       ])
       .optional(),
   ),
+  creatorSlug: z.preprocess(emptyToUndefined, z.string().optional()),
+  featured: z.preprocess((value) => {
+    if (value === "true" || value === true) return true;
+    if (value === "false" || value === false) return false;
+    return emptyToUndefined(value);
+  }, z.boolean().optional()),
   page: optionalInt(1),
   limit: optionalInt(1, 48),
 });

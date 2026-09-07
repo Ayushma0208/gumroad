@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 import { featuredCreators, getFeaturedProducts } from "@/lib/mock/catalog";
-import { productPath } from "@/lib/paths";
+import { creatorPath, productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 
 const products = getFeaturedProducts().slice(0, 3);
@@ -14,11 +14,10 @@ const creator = featuredCreators[0];
 export function HeroShowcase() {
   const reduceMotion = useReducedMotion();
   const [lead, second, third] = products;
-  const enter = reduceMotion
-    ? undefined
-    : { opacity: 0, y: 18 };
+  // Keep SSR readable — never start at opacity 0 (blank homepage before hydrate).
+  const enter = reduceMotion ? undefined : { opacity: 0.96, y: 18 };
 
-  if (!lead || !second || !third) {
+  if (!lead || !second || !third || !creator) {
     return null;
   }
 
@@ -47,7 +46,7 @@ export function HeroShowcase() {
         >
           <ShowcaseCard product={third} className="aspect-[4/3] sm:aspect-[16/10]" />
           <Link
-            href={`/creators/${creator.slug}`}
+            href={creatorPath(creator.slug)}
             className="absolute -bottom-3 left-3 flex items-center gap-2 rounded-full border border-border bg-card py-1.5 pr-3 pl-1.5 shadow-sm sm:left-4"
           >
             <span className="relative size-7 overflow-hidden rounded-full">

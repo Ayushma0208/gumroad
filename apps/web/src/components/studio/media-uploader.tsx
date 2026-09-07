@@ -8,6 +8,7 @@ import {
   deleteProductImage,
   reorderProductImages,
   uploadCreatorAvatar,
+  uploadCreatorBanner,
   uploadProductFile,
   uploadProductImage,
   type ManagedProductFile,
@@ -116,9 +117,22 @@ export function AvatarUploader({
   return (
     <div>
       {value ? (
-        <div className="relative size-28 overflow-hidden rounded-full">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cloudinaryThumb(value, 320)} alt="" className="size-full object-cover" />
+        <div className="flex items-center gap-4">
+          <div className="relative size-28 overflow-hidden rounded-full bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cloudinaryThumb(value, 320)} alt="Store avatar" className="size-full object-cover" />
+          </div>
+          <label className="text-sm text-muted-foreground">
+            <span className="inline-flex h-9 cursor-pointer items-center rounded-xl border border-border px-3 hover:bg-muted">
+              Replace
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(event) => void handleFiles(event.target.files)}
+            />
+          </label>
         </div>
       ) : (
         <DropZone
@@ -129,6 +143,69 @@ export function AvatarUploader({
           hint="Square JPG or PNG."
           icon={ImagePlus}
           compact
+          accept="image/jpeg,image/png,image/webp"
+        />
+      )}
+      {progress !== null ? <ProgressBar value={progress} /> : null}
+      {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
+export function BannerUploader({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const [progress, setProgress] = useState<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFiles(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setError(null);
+    setProgress(30);
+    try {
+      const result = await uploadCreatorBanner(file);
+      onChange(result.bannerUrl ?? "");
+    } catch (uploadError) {
+      setError(uploadError instanceof ApiError ? uploadError.message : "Could not update banner.");
+    } finally {
+      setProgress(null);
+    }
+  }
+
+  return (
+    <div>
+      {value ? (
+        <div>
+          <div className="relative overflow-hidden rounded-xl bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cloudinaryThumb(value, 1200)} alt="Store banner" className="h-40 w-full object-cover" />
+          </div>
+          <label className="mt-3 inline-block text-sm text-muted-foreground">
+            <span className="inline-flex h-9 cursor-pointer items-center rounded-xl border border-border px-3 hover:bg-muted">
+              Replace banner
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(event) => void handleFiles(event.target.files)}
+            />
+          </label>
+        </div>
+      ) : (
+        <DropZone
+          dragging={dragging}
+          setDragging={setDragging}
+          onFiles={handleFiles}
+          label="Drop a banner, or browse"
+          hint="Wide JPG or PNG. Aim for 1600×600."
+          icon={ImagePlus}
           accept="image/jpeg,image/png,image/webp"
         />
       )}

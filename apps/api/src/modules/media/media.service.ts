@@ -285,3 +285,34 @@ export async function uploadCreatorAvatar(userId: string, file: Express.Multer.F
   }
   return { avatarUrl: updated.avatar };
 }
+
+export async function uploadCreatorBanner(userId: string, file: Express.Multer.File | undefined) {
+  if (!file) throw badRequest("Choose an image to upload.");
+  assertAllowedImage(file.originalname, file.mimetype);
+  const profile = await prisma.creatorProfile.findUnique({ where: { userId } });
+  if (!profile) throw notFound("Create a store first.");
+
+  const uploaded = await uploadPublicImage({
+    buffer: file.buffer,
+    folder: cloudinaryFolders.creatorBanner(profile.id),
+    fileName: file.originalname,
+  });
+  const previous = profile.bannerPublicId;
+  const updated = await prisma.creatorProfile.update({
+    where: { id: profile.id },
+    data: { banner: uploaded.secureUrl, bannerPublicId: uploaded.publicId },
+  });
+  if (previous && previous !== uploaded.publicId) {
+    await destroyCloudinaryAsset({
+      publicId: previous,
+      resourceType: "image",
+      type: "upload",
+    }).catch((error) => {
+      logEvent("cloudinary_cleanup_failed", {
+        publicId: previous,
+        reason: error instanceof Error ? error.message : "unknown",
+      });
+    });
+  }
+  return { bannerUrl: updated.banner };
+}

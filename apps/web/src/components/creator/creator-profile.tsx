@@ -1,8 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import { CreatorAvatar } from "@/components/creator/creator-avatar";
 import { buttonVariants } from "@/components/ui/button";
-import { formatCompactNumber } from "@/lib/format";
 import { creatorPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import type { CreatorProfile } from "@/types/catalog";
@@ -22,15 +21,7 @@ export function CreatorProfile({
         href={creatorPath(creator.slug)}
         className={cn("inline-flex items-center gap-3", className)}
       >
-        <span className="relative size-10 overflow-hidden rounded-full bg-muted">
-          <Image
-            src={creator.avatarUrl}
-            alt=""
-            fill
-            sizes="40px"
-            className="object-cover"
-          />
-        </span>
+        <CreatorAvatar src={creator.avatarUrl} name={creator.name} size="md" />
         <span>
           <span className="block text-sm font-medium">{creator.name}</span>
           <span className="text-sm text-muted-foreground">
@@ -43,25 +34,21 @@ export function CreatorProfile({
 
   return (
     <div className={cn("flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8", className)}>
-      <span className="relative size-20 shrink-0 overflow-hidden rounded-full bg-muted sm:size-24">
-        <Image
-          src={creator.avatarUrl}
-          alt=""
-          fill
-          sizes="96px"
-          className="object-cover"
-        />
-      </span>
+      <CreatorAvatar
+        src={creator.avatarUrl}
+        name={creator.storeName ?? creator.name}
+        size="lg"
+      />
       <div className="min-w-0 flex-1">
-        <p className="text-lg font-medium">{creator.name}</p>
-        {creator.storeName ? (
-          <p className="text-sm text-muted-foreground">{creator.storeName}</p>
-        ) : null}
+        <p className="text-xs font-medium tracking-[0.16em] text-muted-foreground uppercase">
+          Created by
+        </p>
+        <p className="mt-2 text-lg font-medium">{creator.storeName ?? creator.name}</p>
+        <p className="text-sm text-muted-foreground">@{creator.slug}</p>
         <p className="mt-3 max-w-xl text-[0.95rem] leading-relaxed text-muted-foreground">
           {creator.bio}
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
-          {formatCompactNumber(creator.followerCount)} following ·{" "}
           {creator.productCount}{" "}
           {creator.productCount === 1 ? "product" : "products"}
         </p>
@@ -72,7 +59,7 @@ export function CreatorProfile({
             "mt-6 rounded-xl",
           )}
         >
-          Visit store
+          View store
           <ArrowUpRight />
         </Link>
       </div>

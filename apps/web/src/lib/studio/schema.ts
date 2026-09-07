@@ -53,6 +53,15 @@ export const productDraftSchema = z
     }
   });
 
+const optionalUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .refine(
+    (value) => value === "" || /^https?:\/\/.+/i.test(value),
+    "Enter a valid URL starting with http:// or https://.",
+  );
+
 export const studioSettingsSchema = z.object({
   displayName: z.string().trim().min(2, "Enter a display name."),
   bio: z
@@ -60,7 +69,9 @@ export const studioSettingsSchema = z.object({
     .trim()
     .min(20, "Give people a little more — at least 20 characters.")
     .max(280, "Keep the bio under 280 characters."),
+  description: z.string().trim().max(4000),
   avatarUrl: z.string(),
+  bannerUrl: z.string(),
   storeName: z.string().trim().min(2, "Enter a store name."),
   slug: z
     .string()
@@ -72,11 +83,13 @@ export const studioSettingsSchema = z.object({
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "Use lowercase letters, numbers, and hyphens.",
     ),
-  storeDescription: z
-    .string()
-    .trim()
-    .min(20, "Describe the store in at least 20 characters.")
-    .max(400, "Keep it under 400 characters."),
+  storeDescription: z.string().trim().max(4000),
+  website: optionalUrl,
+  instagram: optionalUrl,
+  twitter: optionalUrl,
+  linkedin: optionalUrl,
+  youtube: optionalUrl,
+  github: optionalUrl,
   notifySales: z.boolean(),
   notifyProductUpdates: z.boolean(),
   notifyWeeklyDigest: z.boolean(),

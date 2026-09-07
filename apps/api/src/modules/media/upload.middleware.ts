@@ -31,3 +31,4 @@ function wrap(mw: RequestHandler): RequestHandler {
 export const uploadProductImageMiddleware = wrap(imageUpload.single("file"));
 export const uploadProductFileMiddleware = wrap(fileUpload.single("file"));
 export const uploadAvatarMiddleware = wrap(imageUpload.single("file"));
+export const uploadBannerMiddleware = wrap(imageUpload.single("file"));

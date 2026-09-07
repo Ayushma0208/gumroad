@@ -8,6 +8,7 @@ import {
   listProductImages,
   reorderProductImages,
   uploadCreatorAvatar,
+  uploadCreatorBanner,
   uploadProductFile,
   uploadProductImage,
 } from "./media.service";
@@ -90,5 +91,11 @@ export async function reorderImages(req: Request, res: Response) {
 export async function createAvatar(req: Request, res: Response) {
   const user = actor(req);
   const result = await uploadCreatorAvatar(user.id, req.file);
+  res.status(201).json(success(result));
+}
+
+export async function createBanner(req: Request, res: Response) {
+  const user = actor(req);
+  const result = await uploadCreatorBanner(user.id, req.file);
   res.status(201).json(success(result));
 }

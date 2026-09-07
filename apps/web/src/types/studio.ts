@@ -116,10 +116,18 @@ export type StudioAnalytics = {
 export type StudioSettings = {
   displayName: string;
   bio: string;
+  description: string;
   avatarUrl: string;
+  bannerUrl: string;
   storeName: string;
   slug: string;
   storeDescription: string;
+  website: string;
+  instagram: string;
+  twitter: string;
+  linkedin: string;
+  youtube: string;
+  github: string;
   notifySales: boolean;
   notifyProductUpdates: boolean;
   notifyWeeklyDigest: boolean;

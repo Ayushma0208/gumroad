@@ -16,12 +16,14 @@ export default function AdminPage() {
         title="Admin"
         description="Moderation, payouts, and catalog tools will live here once the Express admin module is connected."
       />
-      <div className="mt-8 rounded-xl border border-dashed border-border bg-card/40">
+      <div className="mt-8 rounded-xl border border-dashed border-border bg-card/40 p-6">
         <EmptyState
           full={false}
           icon={Shield}
-          title="Tools are not wired yet"
-          description="This space is reserved for operators. Nothing to moderate until live listings and payouts exist."
+          title="Moderation"
+          description="Catalog payouts still come later. Reviews can be hidden or removed now."
+          actionHref="/admin/reviews"
+          actionLabel="Moderate reviews"
         />
       </div>
     </Container>

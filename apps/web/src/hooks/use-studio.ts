@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { currentUserQueryKey } from "@/hooks/use-auth";
 import {
   archiveProduct,
   deactivateStore,
@@ -156,6 +157,8 @@ export function useSaveSettingsMutation(userId: string) {
       updateStudioSettings({ userId, settings }),
     onSuccess: (settings) => {
       queryClient.setQueryData(studioKeys.settings(userId), settings);
+      void queryClient.invalidateQueries({ queryKey: currentUserQueryKey });
+      void queryClient.invalidateQueries({ queryKey: ["creator"] });
     },
   });
 }
