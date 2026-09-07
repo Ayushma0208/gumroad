@@ -11,6 +11,9 @@ const DEV_PASSWORD = "password12";
 async function main() {
   await prisma.reviewReply.deleteMany();
   await prisma.review.deleteMany();
+  await prisma.couponRedemption.deleteMany();
+  await prisma.couponProduct.deleteMany();
+  await prisma.coupon.deleteMany();
   await prisma.download.deleteMany();
   await prisma.purchase.deleteMany();
   await prisma.payment.deleteMany();
@@ -791,6 +794,22 @@ async function main() {
       { userId: leah.id, productId: promptAtelier.id },
       { userId: owen.id, productId: northline.id },
     ],
+  });
+
+  await prisma.coupon.create({
+    data: {
+      creatorId: mira.id,
+      code: "SUMMER20",
+      type: "PERCENTAGE",
+      value: 20,
+      maxDiscount: 5000,
+      minOrderAmount: 1000,
+      maxUses: 100,
+      perUserLimit: 1,
+      isActive: true,
+      startsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    },
   });
 
   console.log("Seeded Lumen development data.");

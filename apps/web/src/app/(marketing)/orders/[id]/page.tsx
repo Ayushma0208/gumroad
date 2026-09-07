@@ -84,10 +84,15 @@ export default function OrderDetailPage() {
             <span>{formatPrice(order.subtotalCents, order.currency)}</span>
           </div>
           <div className="mt-2 flex justify-between text-sm text-muted-foreground">
-            <span>Discount</span>
+            <span>
+              Discount
+              {order.couponCode ? (
+                <span className="ml-1 text-xs">({order.couponCode})</span>
+              ) : null}
+            </span>
             <span>
               {order.discountCents
-                ? formatPrice(order.discountCents, order.currency)
+                ? `−${formatPrice(order.discountCents, order.currency)}`
                 : "—"}
             </span>
           </div>

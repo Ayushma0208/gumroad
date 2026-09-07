@@ -5,6 +5,7 @@ import {
   Package,
   Receipt,
   Settings,
+  TicketPercent,
   Users,
 } from "lucide-react";
 
@@ -13,6 +14,7 @@ export const studioNav = [
   { href: "/dashboard/products", label: "Products", icon: Package, exact: false },
   { href: "/dashboard/reviews", label: "Reviews", icon: MessageSquare, exact: false },
   { href: "/dashboard/sales", label: "Sales", icon: Receipt, exact: false },
+  { href: "/dashboard/coupons", label: "Coupons", icon: TicketPercent, exact: false },
   { href: "/dashboard/customers", label: "Customers", icon: Users, exact: false },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: false },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },

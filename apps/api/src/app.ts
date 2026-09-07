@@ -22,6 +22,7 @@ import { productRouter } from "./modules/products/product.routes";
 import { reviewRouter } from "./modules/reviews/review.routes";
 import { userRouter } from "./modules/users/user.routes";
 import { wishlistRouter } from "./modules/wishlist/wishlist.routes";
+import { couponRouter } from "./modules/coupons/coupon.routes";
 
 export function createApp() {
   const app = express();
@@ -55,6 +56,7 @@ export function createApp() {
   api.use("/reviews", reviewRouter);
   api.use("/library", libraryRouter);
   api.use("/wishlist", wishlistRouter);
+  api.use("/coupons", couponRouter);
   api.use("/cart", cartRouter);
   api.use("/checkout", checkoutRouter);
   api.use("/orders", orderRouter);

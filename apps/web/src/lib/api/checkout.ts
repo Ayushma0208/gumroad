@@ -39,6 +39,7 @@ export type PublicOrder = {
   total: number;
   totalCents: number;
   currency: "USD" | "INR";
+  couponCode?: string | null;
   createdAt: string;
   updatedAt: string;
   items: PublicOrderItem[];
@@ -67,9 +68,10 @@ export type PurchaseRecord = {
   };
 };
 
-export function createCheckoutOrder() {
+export function createCheckoutOrder(input: { couponCode?: string } = {}) {
   return requestJson<CheckoutSession>("/api/v1/checkout/create-order", {
     method: "POST",
+    body: input,
   });
 }
 

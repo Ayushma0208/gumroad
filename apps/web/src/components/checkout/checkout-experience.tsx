@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, Lock, ShoppingBag } from "lucide-react";
+import { LoaderCircle, Lock, ShoppingBag, Tag, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
@@ -11,11 +11,14 @@ import { Container } from "@/components/layout/container";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { useCart } from "@/hooks/use-cart";
 import { useCreateCheckoutOrder, useVerifyRazorpayPayment } from "@/hooks/use-checkout";
+import { useApplyCheckoutCoupon } from "@/hooks/use-coupons";
 import { ApiError } from "@/lib/api/client";
 import { catalogProductTypeLabel } from "@/lib/api/checkout";
+import type { CheckoutPreview } from "@/lib/api/coupons";
 import { formatPrice } from "@/lib/format";
 import { productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
@@ -29,22 +32,69 @@ type PayState =
   | "failed"
   | "cancelled";
 
+function couponMessage(error: unknown) {
+  if (!(error instanceof ApiError)) return "Couldn’t apply that coupon.";
+  const code =
+    error &&
+    typeof error === "object" &&
+    "message" in error
+      ? error.message
+      : null;
+  return code || "Couldn’t apply that coupon.";
+}
+
 export function CheckoutExperience() {
   const router = useRouter();
   const { user } = useAuth();
   const cart = useCart();
   const createOrder = useCreateCheckoutOrder();
   const verifyPayment = useVerifyRazorpayPayment();
+  const applyCoupon = useApplyCheckoutCoupon();
   const [state, setState] = useState<PayState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [pricing, setPricing] = useState<CheckoutPreview | null>(null);
+  const [pricingCartKey, setPricingCartKey] = useState<string | null>(null);
   const lock = useRef(false);
 
   const items = cart.data?.items ?? [];
   const summary = cart.data?.summary;
+  const cartKey = `${summary?.itemCount ?? 0}:${summary?.subtotalCents ?? 0}`;
+  const activePricing =
+    pricing && pricingCartKey === cartKey ? pricing : null;
   const busy =
     state === "creating_order" ||
     state === "opening_payment" ||
     state === "processing";
+
+  async function onApplyCoupon() {
+    const code = couponInput.trim();
+    if (!code) {
+      setCouponError("Enter a coupon code.");
+      return;
+    }
+    setCouponError(null);
+    try {
+      const preview = await applyCoupon.mutateAsync(code);
+      setPricing(preview);
+      setPricingCartKey(cartKey);
+      if (!preview.coupon) {
+        setCouponError("That coupon code isn't valid.");
+      }
+    } catch (applyError) {
+      setPricing(null);
+      setPricingCartKey(null);
+      setCouponError(couponMessage(applyError));
+    }
+  }
+
+  function onRemoveCoupon() {
+    setPricing(null);
+    setPricingCartKey(null);
+    setCouponInput("");
+    setCouponError(null);
+  }
 
   async function onPay() {
     if (lock.current || busy || items.length === 0) return;
@@ -52,7 +102,9 @@ export function CheckoutExperience() {
     setError(null);
     setState("creating_order");
     try {
-      const session = await createOrder.mutateAsync();
+      const session = await createOrder.mutateAsync({
+        couponCode: activePricing?.coupon?.code,
+      });
       setState("opening_payment");
       if (!window.Razorpay) {
         throw new Error("Razorpay Checkout failed to load. Refresh and try again.");
@@ -157,6 +209,11 @@ export function CheckoutExperience() {
           ? "Confirming payment"
           : "Pay with Razorpay";
 
+  const subtotalCents = activePricing?.subtotalCents ?? summary?.subtotalCents ?? 0;
+  const discountCents = activePricing?.discountCents ?? 0;
+  const totalCents = activePricing?.totalCents ?? summary?.totalCents ?? 0;
+  const currency = activePricing?.currency ?? summary?.currency;
+
   return (
     <Container className="py-8 sm:py-12">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
@@ -177,6 +234,71 @@ export function CheckoutExperience() {
             <p className="mt-4 text-sm text-muted-foreground">
               Instant access. No shipping address — these are files, not parcels.
             </p>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+            <p className="text-xs font-medium tracking-[0.16em] text-muted-foreground uppercase">
+              Coupon
+            </p>
+            <p className="mt-3 font-display text-2xl tracking-tight">Have a coupon?</p>
+            {activePricing?.coupon ? (
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Tag className="size-4 shrink-0 text-brand" />
+                  <div className="min-w-0">
+                    <p className="font-medium tracking-wide">{activePricing.coupon.code}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {activePricing.coupon.type === "PERCENTAGE"
+                        ? `${activePricing.coupon.value}% off eligible items`
+                        : `${formatPrice(activePricing.coupon.value, currency)} off`}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={onRemoveCoupon}
+                >
+                  <X className="size-4" />
+                  Remove
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={couponInput}
+                  onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                  placeholder="SUMMER20"
+                  aria-label="Coupon code"
+                  className="h-11 rounded-xl font-mono uppercase"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void onApplyCoupon();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-xl"
+                  disabled={applyCoupon.isPending}
+                  onClick={() => void onApplyCoupon()}
+                >
+                  {applyCoupon.isPending ? (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  ) : null}
+                  Apply
+                </Button>
+              </div>
+            )}
+            {couponError ? (
+              <p className="mt-3 text-sm text-destructive" role="alert">
+                {couponError}
+              </p>
+            ) : null}
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
@@ -243,18 +365,25 @@ export function CheckoutExperience() {
               <div className="space-y-2 border-t border-border px-5 py-4 text-sm">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span>
-                  <span>
-                    {formatPrice(summary?.subtotalCents ?? 0, summary?.currency)}
-                  </span>
+                  <span>{formatPrice(subtotalCents, currency)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Discount</span>
-                  <span>—</span>
+                  <span>
+                    Discount
+                    {activePricing?.coupon ? (
+                      <span className="ml-1 text-xs">({activePricing.coupon.code})</span>
+                    ) : null}
+                  </span>
+                  <span>
+                    {discountCents > 0
+                      ? `−${formatPrice(discountCents, currency)}`
+                      : "—"}
+                  </span>
                 </div>
                 <div className="flex justify-between pt-2 font-medium">
                   <span>Total</span>
                   <span className="font-display text-2xl tracking-tight">
-                    {formatPrice(summary?.totalCents ?? 0, summary?.currency)}
+                    {formatPrice(totalCents, currency)}
                   </span>
                 </div>
               </div>

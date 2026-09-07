@@ -1,21 +1,23 @@
 "use client";
 
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { formatChangePercent } from "@/lib/analytics/format";
 import { cn } from "@/lib/utils";
 
 export function MetricStat({
   label,
   value,
   change,
-  period = "vs last period",
+  period = "vs previous period",
 }: {
   label: string;
   value: string;
-  change: number;
+  change: number | null;
   period?: string;
 }) {
-  const up = change >= 0;
-  const pct = `${up ? "+" : ""}${Math.round(change * 100)}%`;
+  const isNew = change === null;
+  const up = (change ?? 0) >= 0;
+  const pct = formatChangePercent(change);
 
   return (
     <div className="min-w-0">
@@ -27,15 +29,22 @@ export function MetricStat({
         <span
           className={cn(
             "inline-flex items-center gap-0.5 font-medium",
-            up ? "text-chart-4" : "text-destructive",
+            isNew
+              ? "text-foreground"
+              : up
+                ? "text-chart-4"
+                : "text-destructive",
           )}
         >
-          {up ? (
-            <TrendingUp className="size-3.5" />
-          ) : (
-            <TrendingDown className="size-3.5" />
-          )}
-          {pct}
+          {!isNew &&
+            (up ? (
+              <TrendingUp className="size-3.5" aria-hidden />
+            ) : (
+              <TrendingDown className="size-3.5" aria-hidden />
+            ))}
+          <span aria-label={isNew ? "New versus previous period" : `${pct} versus previous period`}>
+            {pct}
+          </span>
         </span>
         <span>{period}</span>
       </p>

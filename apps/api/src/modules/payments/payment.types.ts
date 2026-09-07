@@ -13,6 +13,7 @@ export function serializeOrder(order: {
   totalAmount: number;
   currency: Currency;
   status: OrderStatus;
+  couponCode?: string | null;
   createdAt: Date;
   updatedAt: Date;
   items: Array<{
@@ -48,6 +49,7 @@ export function serializeOrder(order: {
     total: majorFromMinor(order.totalAmount),
     totalCents: order.totalAmount,
     currency: order.currency,
+    couponCode: order.couponCode ?? null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     items: order.items.map((item) => ({

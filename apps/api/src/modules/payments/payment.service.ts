@@ -9,6 +9,7 @@ import {
   verifyWebhookSignature,
 } from "./razorpay.service";
 import type { VerifyRazorpayInput } from "./payment.validation";
+import { redeemCouponForPaidOrder } from "../coupons/coupon.service";
 
 const PENDING_WINDOW_MS = 20 * 60 * 1000;
 
@@ -95,6 +96,14 @@ export async function fulfillPaidOrder(input: {
     if (cart) {
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
     }
+
+    await redeemCouponForPaidOrder(tx, {
+      orderId: order.id,
+      userId: order.customerId,
+      couponId: order.couponId,
+      discountAmount: order.discount,
+    });
+
     return { alreadyPaid: false, customerId: order.customerId };
   });
 

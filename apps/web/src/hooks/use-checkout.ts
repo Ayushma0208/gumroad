@@ -48,7 +48,7 @@ export function usePurchases() {
 
 export function useCreateCheckoutOrder() {
   return useMutation({
-    mutationFn: createCheckoutOrder,
+    mutationFn: (input: { couponCode?: string } = {}) => createCheckoutOrder(input),
   });
 }
 

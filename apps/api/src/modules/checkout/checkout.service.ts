@@ -3,10 +3,13 @@ import type { Currency } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { badRequest, conflict, forbidden } from "../../utils/app-error";
 import { logEvent } from "../../utils/logger";
-import { razorpayAmountFromCatalog } from "../../utils/money";
+import { majorFromMinor, razorpayAmountFromCatalog } from "../../utils/money";
 import {
-  PENDING_WINDOW_MS,
-} from "../payments/payment.service";
+  applyCouponToCartLines,
+  type CartLineForPricing,
+  type CouponDiscountResult,
+} from "../coupons/coupon.service";
+import { PENDING_WINDOW_MS } from "../payments/payment.service";
 import {
   createRazorpayOrder,
   getRazorpayKeyId,
@@ -16,15 +19,22 @@ const RAZORPAY_CURRENCIES = new Set<Currency>(["INR", "USD"]);
 
 function checkoutKeyFor(
   items: Array<{ productId: string; quantity: number; price: number }>,
+  couponCode: string | null,
+  discountAmount: number,
 ) {
   const fingerprint = items
     .map((item) => `${item.productId}:${item.price}:${item.quantity}`)
     .sort()
     .join("|");
-  return createHash("sha256").update(fingerprint).digest("hex");
+  const couponPart = couponCode
+    ? `|coupon:${couponCode}|discount:${discountAmount}`
+    : "|coupon:none";
+  return createHash("sha256")
+    .update(`${fingerprint}${couponPart}`)
+    .digest("hex");
 }
 
-export async function createCheckoutOrder(customerId: string) {
+async function loadCheckoutLines(customerId: string): Promise<CartLineForPricing[]> {
   const cart = await prisma.cart.findUnique({
     where: { customerId },
     include: {
@@ -42,7 +52,7 @@ export async function createCheckoutOrder(customerId: string) {
     throw badRequest("Your bag is empty.");
   }
 
-  const lines = [];
+  const lines: CartLineForPricing[] = [];
   for (const item of cart.items) {
     const product = await prisma.product.findUnique({
       where: { id: item.productId },
@@ -84,14 +94,83 @@ export async function createCheckoutOrder(customerId: string) {
     throw badRequest("Razorpay checkout currently supports INR and USD only.");
   }
 
-  const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
-  const discount = 0;
-  const totalAmount = subtotal - discount;
+  return lines;
+}
+
+function pricingFromLines(
+  lines: CartLineForPricing[],
+  discount: CouponDiscountResult | null,
+) {
+  const subtotal = lines.reduce(
+    (sum, line) => sum + line.price * line.quantity,
+    0,
+  );
+  const discountAmount = discount?.discountAmount ?? 0;
+  const totalAmount = subtotal - discountAmount;
+  return { subtotal, discountAmount, totalAmount, currency: lines[0]!.currency };
+}
+
+export async function previewCheckout(
+  customerId: string,
+  couponCode?: string | null,
+) {
+  const lines = await loadCheckoutLines(customerId);
+  const discount = await applyCouponToCartLines({
+    userId: customerId,
+    code: couponCode,
+    lines,
+  });
+  const { subtotal, discountAmount, totalAmount, currency } = pricingFromLines(
+    lines,
+    discount,
+  );
   if (totalAmount <= 0) {
     throw badRequest("Order total is too small to charge.");
   }
 
-  const checkoutKey = checkoutKeyFor(lines);
+  return {
+    subtotal: majorFromMinor(subtotal),
+    subtotalCents: subtotal,
+    discount: majorFromMinor(discountAmount),
+    discountCents: discountAmount,
+    total: majorFromMinor(totalAmount),
+    totalCents: totalAmount,
+    currency,
+    itemCount: lines.length,
+    coupon: discount
+      ? {
+          code: discount.code,
+          type: discount.type,
+          value: discount.value,
+          affectedProductIds: discount.affectedProductIds,
+        }
+      : null,
+  };
+}
+
+export async function createCheckoutOrder(
+  customerId: string,
+  couponCode?: string | null,
+) {
+  const lines = await loadCheckoutLines(customerId);
+  const discount = await applyCouponToCartLines({
+    userId: customerId,
+    code: couponCode,
+    lines,
+  });
+  const { subtotal, discountAmount, totalAmount, currency } = pricingFromLines(
+    lines,
+    discount,
+  );
+  if (totalAmount <= 0) {
+    throw badRequest("Order total is too small to charge.");
+  }
+
+  const checkoutKey = checkoutKeyFor(
+    lines,
+    discount?.code ?? null,
+    discountAmount,
+  );
   const reusable = await prisma.order.findFirst({
     where: {
       customerId,
@@ -110,7 +189,12 @@ export async function createCheckoutOrder(customerId: string) {
 
   if (reusable?.payment?.providerOrderId) {
     logEvent("checkout_order_reused", { orderId: reusable.id });
-    return checkoutPayload(reusable.id, reusable.payment.providerOrderId, reusable.payment.amount, reusable.currency);
+    return checkoutPayload(
+      reusable.id,
+      reusable.payment.providerOrderId,
+      reusable.payment.amount,
+      reusable.currency,
+    );
   }
 
   const failedPending = await prisma.order.findFirst({
@@ -123,7 +207,13 @@ export async function createCheckoutOrder(customerId: string) {
     include: { payment: true },
   });
   if (failedPending) {
-    return attachRazorpayOrder(failedPending.id, totalAmount, currency, "checkout_order_retried", false);
+    return attachRazorpayOrder(
+      failedPending.id,
+      totalAmount,
+      currency,
+      "checkout_order_retried",
+      false,
+    );
   }
 
   await prisma.order.updateMany({
@@ -143,11 +233,13 @@ export async function createCheckoutOrder(customerId: string) {
       data: {
         customerId,
         subtotal,
-        discount,
+        discount: discountAmount,
         totalAmount,
         currency,
         status: "PENDING",
         checkoutKey,
+        couponId: discount?.couponId ?? null,
+        couponCode: discount?.code ?? null,
         items: {
           create: lines.map((line) => ({
             productId: line.productId,
@@ -167,15 +259,27 @@ export async function createCheckoutOrder(customerId: string) {
         },
       },
     });
-    return attachRazorpayOrder(order.id, totalAmount, currency, "checkout_order_created", true);
+    return attachRazorpayOrder(
+      order.id,
+      totalAmount,
+      currency,
+      "checkout_order_created",
+      true,
+    );
   } catch (error) {
     if (isUniqueViolation(error)) {
       const existing = await prisma.order.findFirst({
         where: { customerId, status: "PENDING" },
         include: { payment: true },
       });
-      if (existing?.payment?.providerOrderId && existing.checkoutKey === checkoutKey) {
-        logEvent("checkout_order_reused", { orderId: existing.id, reason: "race" });
+      if (
+        existing?.payment?.providerOrderId &&
+        existing.checkoutKey === checkoutKey
+      ) {
+        logEvent("checkout_order_reused", {
+          orderId: existing.id,
+          reason: "race",
+        });
         return checkoutPayload(
           existing.id,
           existing.payment.providerOrderId,
@@ -231,7 +335,12 @@ async function attachRazorpayOrder(
       amount: razorpayOrder.amount,
       currency,
     });
-    return checkoutPayload(orderId, razorpayOrder.id, razorpayOrder.amount, currency);
+    return checkoutPayload(
+      orderId,
+      razorpayOrder.id,
+      razorpayOrder.amount,
+      currency,
+    );
   } catch (error) {
     if (cancelOnFailure) {
       await prisma.order.update({

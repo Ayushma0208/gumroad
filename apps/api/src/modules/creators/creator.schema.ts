@@ -13,6 +13,7 @@ export const RESERVED_STORE_SLUGS = new Set([
   "discover",
   "library",
   "dashboard",
+  "analytics",
 ]);
 
 export const storeSlugSchema = z

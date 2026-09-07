@@ -57,6 +57,11 @@ enum ReviewStatus {
   HIDDEN
 }
 
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -74,6 +79,7 @@ model User {
   reviews        Review[]
   downloads      Download[]
   wishlistItems  WishlistItem[]
+  couponRedemptions CouponRedemption[]
 }
 
 model CreatorProfile {
@@ -99,8 +105,9 @@ model CreatorProfile {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  products     Product[]
+  products      Product[]
   reviewReplies ReviewReply[]
+  coupons       Coupon[]
 
   @@index([slug])
 }
@@ -146,8 +153,9 @@ model Product {
   orderItems    OrderItem[]
   purchases     Purchase[]
   reviews       Review[]
-  downloads      Download[]
+  downloads     Download[]
   wishlistItems WishlistItem[]
+  couponProducts CouponProduct[]
 
   @@index([creatorId])
   @@index([categoryId])
@@ -245,19 +253,25 @@ model Order {
   currency    Currency
   status      OrderStatus @default(PENDING)
   checkoutKey String?
+  couponId    String?
+  couponCode  String?
+  coupon      Coupon?     @relation(fields: [couponId], references: [id], onDelete: SetNull)
   items       OrderItem[]
   payment     Payment?
   purchases   Purchase[]
   downloads   Download[]
   reviews     Review[]
+  couponRedemption CouponRedemption?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
   @@index([customerId])
   @@index([status])
   @@index([createdAt])
+  @@index([status, createdAt])
   @@index([customerId, status])
   @@index([checkoutKey])
+  @@index([couponId])
 }
 
 model OrderItem {
@@ -274,6 +288,7 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@index([creatorId])
+  @@index([creatorId, productId])
 }
 
 model Payment {
@@ -365,4 +380,64 @@ model ReviewReply {
   creator   CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Restrict)
 
   @@index([creatorId])
+}
+
+model Coupon {
+  id             String         @id @default(cuid())
+  /// Null reserved for future platform-wide coupons; creator coupons always set this.
+  creatorId      String?
+  creator        CreatorProfile? @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  code           String         @unique
+  type           CouponType
+  /// PERCENTAGE: 1–100. FIXED: minor currency units (cents/paise).
+  value          Int
+  /// Cap for percentage discounts (minor units). Null = uncapped.
+  maxDiscount    Int?
+  /// Minimum eligible subtotal in minor units.
+  minOrderAmount Int?
+  maxUses        Int?
+  usedCount      Int            @default(0)
+  perUserLimit   Int?
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  products       CouponProduct[]
+  redemptions    CouponRedemption[]
+  orders         Order[]
+
+  @@index([creatorId])
+  @@index([isActive])
+  @@index([expiresAt])
+  @@index([creatorId, isActive])
+}
+
+model CouponProduct {
+  id        String  @id @default(cuid())
+  couponId  String
+  productId String
+  coupon    Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, productId])
+  @@index([productId])
+  @@index([couponId])
+}
+
+model CouponRedemption {
+  id             String   @id @default(cuid())
+  couponId       String
+  userId         String
+  orderId        String   @unique
+  discountAmount Int
+  createdAt      DateTime @default(now())
+  coupon         Coupon   @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([couponId, userId])
+  @@index([createdAt])
 }

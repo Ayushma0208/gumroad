@@ -8,43 +8,39 @@ import { StudioQueryError } from "@/components/studio/query-error";
 import { TableSkeleton } from "@/components/studio/skeletons";
 import { StudioPage } from "@/components/studio/studio-page";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/use-auth";
-import { useStudioSales } from "@/hooks/use-studio";
+import { useCreatorRecentSales } from "@/hooks/use-analytics";
 import { formatDate, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PaymentStatus, StudioSale } from "@/types/studio";
 
 type StatusFilter = "all" | PaymentStatus;
-type DateFilter = "all" | "30" | "90";
-
-const FILTER_NOW = Date.parse("2026-09-04T12:00:00.000Z");
+type DateFilter = "30d" | "90d" | "this_year";
 
 export function SalesExperience() {
-  const { user } = useAuth();
-  const query = useStudioSales(user?.id);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
-  const [dates, setDates] = useState<DateFilter>("all");
+  const [dates, setDates] = useState<DateFilter>("90d");
   const [selected, setSelected] = useState<StudioSale | null>(null);
 
-  const sales = useMemo(() => query.data ?? [], [query.data]);
+  const query = useCreatorRecentSales({
+    range: dates,
+    status: status === "all" ? "all" : status,
+    limit: 50,
+  });
+
+  const sales = useMemo(() => query.data?.items ?? [], [query.data]);
   const paid = sales.filter((sale) => sale.status === "paid");
   const revenue = paid.reduce((sum, sale) => sum + sale.amountCents, 0);
-  const now = FILTER_NOW;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const cutoff =
-      dates === "all" ? 0 : now - Number(dates) * 24 * 60 * 60 * 1000;
-    return sales.filter((sale) => {
-      if (status !== "all" && sale.status !== status) return false;
-      if (cutoff && new Date(sale.purchasedAt).getTime() < cutoff) return false;
-      if (!q) return true;
-      return `${sale.customerName} ${sale.productTitle} ${sale.customerEmail}`
+    if (!q) return sales;
+    return sales.filter((sale) =>
+      `${sale.customerName} ${sale.productTitle} ${sale.customerEmail} ${sale.id}`
         .toLowerCase()
-        .includes(q);
-    });
-  }, [dates, now, sales, search, status]);
+        .includes(q),
+    );
+  }, [sales, search]);
 
   if (query.isPending) {
     return (
@@ -69,7 +65,7 @@ export function SalesExperience() {
     <StudioPage>
       <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Sales</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        {paid.length} paid orders · {formatPrice(revenue)}
+        {paid.length} paid line{paid.length === 1 ? "" : "s"} · {formatPrice(revenue)}
       </p>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -100,9 +96,9 @@ export function SalesExperience() {
           aria-label="Date range"
           className="h-11 rounded-xl border border-input bg-transparent px-3 text-sm"
         >
-          <option value="all">All time</option>
-          <option value="30">Last 30 days</option>
-          <option value="90">Last 90 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="this_year">This year</option>
         </select>
       </div>
 
@@ -120,7 +116,7 @@ export function SalesExperience() {
           <div>
             <ul className="space-y-3 lg:hidden">
               {filtered.map((sale) => (
-                <li key={sale.id}>
+                <li key={`${sale.id}-${sale.productId}`}>
                   <button
                     type="button"
                     onClick={() => setSelected(sale)}
@@ -147,6 +143,7 @@ export function SalesExperience() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs text-muted-foreground">
+                    <th className="pb-3 font-medium">Order</th>
                     <th className="pb-3 font-medium">Customer</th>
                     <th className="pb-3 font-medium">Product</th>
                     <th className="pb-3 font-medium">Date</th>
@@ -157,13 +154,18 @@ export function SalesExperience() {
                 <tbody>
                   {filtered.map((sale) => (
                     <tr
-                      key={sale.id}
+                      key={`${sale.id}-${sale.productId}`}
                       className={cn(
                         "cursor-pointer border-b border-border/70 last:border-0",
-                        selected?.id === sale.id && "bg-muted/40",
+                        selected?.id === sale.id &&
+                          selected.productId === sale.productId &&
+                          "bg-muted/40",
                       )}
                       onClick={() => setSelected(sale)}
                     >
+                      <td className="py-3 pr-3 font-mono text-xs text-muted-foreground">
+                        {sale.id.slice(0, 8)}
+                      </td>
                       <td className="py-3 pr-3">
                         <div className="flex items-center gap-2.5">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
