@@ -1,19 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { FilterX, SearchX, Store } from "lucide-react";
-import { SEARCH_SUGGESTIONS } from "@/lib/catalog/query";
 import { Button } from "@/components/ui/button";
+import type { Category } from "@/types/catalog";
 
 export function DiscoverEmpty({
   kind,
   query,
   categoryLabel,
+  categories = [],
   onClear,
   onSuggestion,
 }: {
   kind: "search" | "category" | "filters";
   query?: string;
   categoryLabel?: string | null;
+  categories?: Category[];
   onClear: () => void;
   onSuggestion: (value: string) => void;
 }) {
@@ -31,12 +34,32 @@ export function DiscoverEmpty({
         {copy.title}
       </p>
       <p className="mt-3 max-w-md text-muted-foreground">{copy.description}</p>
+      {kind === "search" ? (
+        <ul className="mt-4 max-w-sm space-y-1 text-sm text-muted-foreground">
+          <li>Check spelling</li>
+          <li>Try fewer words</li>
+          <li>Browse a category below</li>
+        </ul>
+      ) : null}
       <Button className="mt-8 h-11 rounded-xl px-5" onClick={onClear}>
         {copy.action}
       </Button>
-      {kind === "search" ? (
+      {kind === "search" && categories.length > 0 ? (
         <div className="mt-8 flex flex-wrap justify-center gap-2">
-          {SEARCH_SUGGESTIONS.map((suggestion) => (
+          {categories.slice(0, 6).map((category) => (
+            <Link
+              key={category.id}
+              href={`/discover?category=${encodeURIComponent(category.slug)}`}
+              className="h-9 rounded-full border border-border px-3.5 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            >
+              {category.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+      {kind === "search" && categories.length === 0 ? (
+        <div className="mt-8 flex flex-wrap justify-center gap-2">
+          {["UI kit", "Notion", "Course", "Template"].map((suggestion) => (
             <button
               key={suggestion}
               type="button"
@@ -59,10 +82,9 @@ function emptyCopy(
 ) {
   if (kind === "search") {
     return {
-      title: "No products found",
-      description: query
-        ? `Nothing matched “${query}”. Try a creator, a category, or a shorter phrase.`
-        : "Nothing matched that search. Try a creator, a category, or a shorter phrase.",
+      title: query ? `No products found for “${query}”` : "No products found",
+      description:
+        "Try a shorter phrase, a creator name, or explore categories.",
       action: "Clear search",
     };
   }

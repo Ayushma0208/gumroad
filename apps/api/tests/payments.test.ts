@@ -75,6 +75,12 @@ vi.mock("../src/modules/payments/razorpay.service", async (importOriginal) => {
   };
 });
 
+vi.mock("../src/modules/notifications/notification.events", () => ({
+  notifyOrderPaid: vi.fn().mockResolvedValue(undefined),
+  notifyReviewCreated: vi.fn().mockResolvedValue(undefined),
+  notifyProductStatusChange: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { createApp } from "../src/app";
 import { cookieName } from "../src/config/cookies";
 

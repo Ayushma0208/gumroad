@@ -6,11 +6,15 @@ import {
   getLibraryProduct,
   requestDownload,
 } from "@/lib/api/library";
+import { requestJson } from "@/lib/api/http";
 import { useAuth } from "@/hooks/use-auth";
 import { purchasesQueryKey } from "@/hooks/use-checkout";
 
 export const libraryQueryKey = ["library"] as const;
 export const libraryProductKey = (id: string) => ["library", id] as const;
+export const libraryKeys = {
+  ids: ["library", "ids"] as const,
+};
 
 export function useLibrary() {
   const { isAuthenticated } = useAuth();
@@ -39,4 +43,21 @@ export function useRequestDownload(productId: string) {
       void queryClient.invalidateQueries({ queryKey: purchasesQueryKey });
     },
   });
+}
+
+export function useLibraryIds() {
+  const { isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: libraryKeys.ids,
+    queryFn: () =>
+      requestJson<{ productIds: string[] }>("/api/v1/library/ids"),
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
+}
+
+export function useOwnsProduct(productId: string | undefined) {
+  const ids = useLibraryIds();
+  if (!productId) return false;
+  return Boolean(ids.data?.productIds.includes(productId));
 }

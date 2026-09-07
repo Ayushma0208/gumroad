@@ -28,11 +28,15 @@ export const requireAuth: RequestHandler = async (req, _res, next) => {
 
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true },
+      select: { id: true, email: true, role: true, status: true },
     });
 
     if (!user) {
       throw unauthorized();
+    }
+
+    if (user.status === "SUSPENDED") {
+      throw unauthorized("This account has been suspended.");
     }
 
     const context: AuthContext = {
@@ -58,10 +62,14 @@ export const optionalAuth: RequestHandler = async (req, _res, next) => {
       const payload = jwt.verify(token, env.JWT_SECRET) as AccessToken;
       const user = await prisma.user.findUnique({
         where: { id: payload.sub },
-        select: { id: true, email: true, role: true },
+        select: { id: true, email: true, role: true, status: true },
       });
-      if (user) {
-        req.user = user;
+      if (user && user.status !== "SUSPENDED") {
+        req.user = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        };
       }
     } catch {
       /* ignore invalid optional session */

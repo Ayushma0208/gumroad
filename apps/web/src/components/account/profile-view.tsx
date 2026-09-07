@@ -81,6 +81,15 @@ export function ProfileView() {
         >
           My library
         </Link>
+        <Link
+          href="/settings/notifications"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "lg" }),
+            "rounded-xl",
+          )}
+        >
+          Notification preferences
+        </Link>
       </div>
     </Container>
   );

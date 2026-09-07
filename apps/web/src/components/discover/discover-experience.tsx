@@ -127,9 +127,14 @@ export function DiscoverExperience() {
           : "filters";
 
   const total = pagination?.total ?? results.length;
-  const countLabel = `${total.toLocaleString("en-US")} ${
-    total === 1 ? "product" : "products"
-  }`;
+  const trimmedQuery = (debouncedQuery || filters.q).trim();
+  const countLabel = trimmedQuery
+    ? `${total.toLocaleString("en-US")} ${
+        total === 1 ? "result" : "results"
+      } for “${trimmedQuery}”`
+    : `${total.toLocaleString("en-US")} ${
+        total === 1 ? "product" : "products"
+      }`;
   const catalogError =
     categoriesQuery.error ?? featuredQuery.error ?? productsQuery.error;
   const showGridSkeleton = productsQuery.isPending && !productsQuery.data;
@@ -159,6 +164,15 @@ export function DiscoverExperience() {
                 lastPushedQuery.current = "";
                 setDraftQuery("");
                 patchFilters({ q: "", page: 1 });
+              }}
+              onSubmitQuery={(term) => {
+                lastPushedQuery.current = term;
+                setDraftQuery(term);
+                patchFilters({
+                  q: term,
+                  sort: term ? "relevance" : "popular",
+                  page: 1,
+                });
               }}
             />
           </div>
@@ -225,6 +239,7 @@ export function DiscoverExperience() {
             kind={emptyKind}
             query={draftQuery || filters.q}
             categoryLabel={activeCategory?.label}
+            categories={categories}
             onClear={emptyKind === "category" ? clearAll : clearBrowse}
             onSuggestion={applySuggestion}
           />

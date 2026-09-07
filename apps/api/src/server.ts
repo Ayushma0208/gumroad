@@ -1,11 +1,15 @@
 import { createApp } from "./app";
 import { env } from "./config/env";
 import { prisma } from "./config/database";
+import { startEmailWorker } from "./modules/email/email.service";
 
 const app = createApp();
 
 app.listen(env.PORT, () => {
   console.log(`Lumen API listening on http://localhost:${env.PORT}`);
+  if (env.NODE_ENV !== "test") {
+    startEmailWorker(env.EMAIL_WORKER_INTERVAL_MS);
+  }
 });
 
 void prisma.$connect().catch((error: unknown) => {

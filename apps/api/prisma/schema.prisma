@@ -62,24 +62,83 @@ enum CouponType {
   FIXED
 }
 
-model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(CUSTOMER)
-  avatarUrl    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
 
-  creatorProfile CreatorProfile?
-  cart           Cart?
-  orders         Order[]
-  purchases      Purchase[]
-  reviews        Review[]
-  downloads      Download[]
-  wishlistItems  WishlistItem[]
+enum ReportTargetType {
+  PRODUCT
+  REVIEW
+  CREATOR
+}
+
+enum ReportReason {
+  COPYRIGHT
+  SPAM
+  HARASSMENT
+  MISLEADING
+  INAPPROPRIATE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum AdminAuditAction {
+  USER_SUSPENDED
+  USER_RESTORED
+  PRODUCT_PUBLISHED
+  PRODUCT_UNPUBLISHED
+  PRODUCT_ARCHIVED
+  PRODUCT_RESTORED
+  REVIEW_HIDDEN
+  REVIEW_RESTORED
+  REVIEW_DELETED
+  REPORT_UNDER_REVIEW
+  REPORT_RESOLVED
+  REPORT_DISMISSED
+  CATEGORY_CREATED
+  CATEGORY_UPDATED
+  CATEGORY_DELETED
+  CREATOR_SUSPENDED
+  CREATOR_RESTORED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(CUSTOMER)
+  status       UserStatus @default(ACTIVE)
+  avatarUrl    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  creatorProfile    CreatorProfile?
+  cart              Cart?
+  orders            Order[]
+  purchases         Purchase[]
+  reviews           Review[]
+  downloads         Download[]
+  wishlistItems     WishlistItem[]
   couponRedemptions CouponRedemption[]
+  reportsFiled      Report[]           @relation("ReporterReports")
+  reportsResolved   Report[]           @relation("ResolverReports")
+  auditLogs         AdminAuditLog[]
+  notifications     Notification[]
+  notificationPreference NotificationPreference?
+  emailJobs         EmailJob[]
+
+  @@index([role])
+  @@index([status])
+  @@index([createdAt])
+  @@index([role, createdAt])
 }
 
 model CreatorProfile {
@@ -120,10 +179,14 @@ model Category {
   imageUrl    String
   icon        String
   sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   products Product[]
+
+  @@index([isActive])
+  @@index([sortOrder])
 }
 
 model Product {
@@ -167,6 +230,8 @@ model Product {
   @@index([status, createdAt])
   @@index([status, categoryId])
   @@index([status, featured])
+  /// Discover trending sort: published + trending flag, then sales.
+  @@index([status, trending])
 }
 
 model ProductImage {
@@ -439,5 +504,130 @@ model CouponRedemption {
   @@index([couponId])
   @@index([userId])
   @@index([couponId, userId])
+  @@index([createdAt])
+}
+
+model Report {
+  id             String           @id @default(cuid())
+  reporterId     String
+  reporter       User             @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType     ReportTargetType
+  targetId       String
+  reason         ReportReason
+  description    String?
+  status         ReportStatus     @default(OPEN)
+  resolvedById   String?
+  resolvedBy     User?            @relation("ResolverReports", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@index([reporterId])
+  @@index([createdAt])
+}
+
+model AdminAuditLog {
+  id         String           @id @default(cuid())
+  adminId    String
+  admin      User             @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  action     AdminAuditAction
+  targetType String
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime         @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  PURCHASE_SUCCESS
+  CREATOR_SALE
+  REVIEW_RECEIVED
+  PRODUCT_APPROVED
+  PRODUCT_UNPUBLISHED
+  PRODUCT_ARCHIVED
+  ACCOUNT_UPDATE
+}
+
+enum EmailJobStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+enum EmailTemplate {
+  PURCHASE_CONFIRMATION
+  CREATOR_SALE
+  REVIEW_RECEIVED
+  PRODUCT_STATUS
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  /// Deterministic key to prevent duplicate notifications for the same event.
+  eventKey  String?          @unique
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  id                       String   @id @default(cuid())
+  userId                   String   @unique
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Marketing / promotional (off by default).
+  marketingEmailEnabled    Boolean  @default(false)
+  /// Optional toggles for non-essential transactional categories.
+  purchaseEmails           Boolean  @default(true)
+  creatorSaleEmails        Boolean  @default(true)
+  reviewEmails             Boolean  @default(true)
+  productModerationEmails  Boolean  @default(true)
+  /// Always treated as required when sending; stored for UI transparency.
+  securityEmails           Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model EmailJob {
+  id            String         @id @default(cuid())
+  userId        String?
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type          String
+  toEmail       String
+  subject       String
+  template      EmailTemplate
+  payload       Json
+  status        EmailJobStatus @default(PENDING)
+  attempts      Int            @default(0)
+  maxAttempts   Int            @default(3)
+  lastError     String?
+  /// Deterministic key preventing duplicate transactional emails.
+  eventKey      String         @unique
+  nextAttemptAt DateTime       @default(now())
+  sentAt        DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([userId, createdAt])
   @@index([createdAt])
 }

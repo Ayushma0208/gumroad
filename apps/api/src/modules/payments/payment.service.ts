@@ -10,6 +10,7 @@ import {
 } from "./razorpay.service";
 import type { VerifyRazorpayInput } from "./payment.validation";
 import { redeemCouponForPaidOrder } from "../coupons/coupon.service";
+import { notifyOrderPaid } from "../notifications/notification.events";
 
 const PENDING_WINDOW_MS = 20 * 60 * 1000;
 
@@ -112,6 +113,11 @@ export async function fulfillPaidOrder(input: {
     source: input.source,
     alreadyPaid: result.alreadyPaid,
   });
+
+  if (!result.alreadyPaid) {
+    void notifyOrderPaid(input.orderId);
+  }
+
   return result;
 }
 

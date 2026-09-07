@@ -143,7 +143,12 @@ export async function searchCatalogPage(
     minPrice: priceRange.min,
     maxPrice: priceRange.max,
     minRating: filters.rating ? Number(filters.rating) : undefined,
-    sort: filters.sort === "price-asc" ? "price_asc" : filters.sort === "price-desc" ? "price_desc" : filters.sort,
+    sort:
+      filters.sort === "price-asc"
+        ? "price_asc"
+        : filters.sort === "price-desc"
+          ? "price_desc"
+          : filters.sort,
     page: filters.page,
     limit: 12,
   };

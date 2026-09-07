@@ -10,8 +10,15 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   JWT_EXPIRES_IN: z.string().default("30d"),
   CLIENT_URL: z.string().url(),
+  /// Public web app URL for email links. Falls back to CLIENT_URL when unset.
+  APP_URL: z.string().url().optional(),
   COOKIE_NAME: z.string().default("lumen_session"),
   REDIS_URL: z.string().optional(),
+  /// Display-capable From header, e.g. `Lumen <noreply@example.com>` or a bare email.
+  EMAIL_FROM: z.string().min(3).optional(),
+  EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
+  EMAIL_API_KEY: z.string().optional(),
+  EMAIL_WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(15000),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_REGION: z.string().optional(),

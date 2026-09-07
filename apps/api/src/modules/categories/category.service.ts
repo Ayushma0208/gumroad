@@ -35,6 +35,7 @@ const withCount = {
 
 export async function listCategories() {
   const categories = await prisma.category.findMany({
+    where: { isActive: true },
     orderBy: { sortOrder: "asc" },
     include: withCount,
   });

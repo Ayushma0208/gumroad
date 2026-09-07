@@ -7,6 +7,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MobileAuthLinks, UserMenu } from "@/components/layout/user-menu";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Sheet,
@@ -106,6 +107,7 @@ export function SiteHeader() {
               ) : null}
             </Link>
           ) : null}
+          {isAuthenticated ? <NotificationBell /> : null}
           <Link
             href="/cart"
             aria-label={`Cart, ${cartCount} items`}

@@ -12,6 +12,7 @@ import {
 } from "@/components/layout/studio-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Sheet,
@@ -169,6 +170,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
               >
                 Marketplace
               </Link>
+              <NotificationBell />
               <ThemeToggle />
               <UserMenu triggerClassName="inline-flex" />
             </div>

@@ -13,6 +13,7 @@ import {
   skipTake,
 } from "../../utils/pagination";
 import { getCustomerProductAccess } from "../access/access.service";
+import { notifyReviewCreated } from "../notifications/notification.events";
 import type {
   AdminReviewsQuery,
   CreateReviewInput,
@@ -190,6 +191,7 @@ export async function createReview(
       },
       include: reviewInclude,
     });
+    void notifyReviewCreated(review.id);
     return serializePublicReview(review, { verified: true });
   } catch (error) {
     if (error instanceof PrismaNS.PrismaClientKnownRequestError && error.code === "P2002") {

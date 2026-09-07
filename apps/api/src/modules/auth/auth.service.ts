@@ -4,6 +4,7 @@ import { prisma } from "../../config/database";
 import { env } from "../../config/env";
 import {
   conflict,
+  forbidden,
   unauthorized,
 } from "../../utils/app-error";
 import { toPublicUser, type PublicUser } from "./auth.types";
@@ -46,6 +47,10 @@ export async function loginUser(input: LoginInput): Promise<PublicUser> {
   const matches = await bcrypt.compare(input.password, user.passwordHash);
   if (!matches) {
     throw unauthorized("Email or password is incorrect.");
+  }
+
+  if (user.status === "SUSPENDED") {
+    throw forbidden("This account has been suspended.");
   }
 
   return toPublicUser(user);

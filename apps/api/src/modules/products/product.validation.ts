@@ -59,7 +59,8 @@ const optionalInt = (min: number, max?: number) =>
     return Number.isFinite(parsed) ? parsed : value;
   }, z.number().int().min(min).max(max ?? Number.MAX_SAFE_INTEGER).optional());
 
-export const listProductsQuerySchema = z.object({
+export const listProductsQuerySchema = z
+  .object({
   search: z.string().optional(),
   q: z.string().optional(),
   category: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -82,6 +83,8 @@ export const listProductsQuerySchema = z.object({
         "popular",
         "newest",
         "featured",
+        "trending",
+        "relevance",
         "price_asc",
         "price_desc",
         "rating",
@@ -98,7 +101,20 @@ export const listProductsQuerySchema = z.object({
   }, z.boolean().optional()),
   page: optionalInt(1),
   limit: optionalInt(1, 48),
-});
+})
+  .superRefine((value, ctx) => {
+    if (
+      value.minPrice !== undefined &&
+      value.maxPrice !== undefined &&
+      value.minPrice > value.maxPrice
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["minPrice"],
+        message: "minPrice cannot be greater than maxPrice.",
+      });
+    }
+  });
 
 export const paginationQuerySchema = z.object({
   page: optionalInt(1),

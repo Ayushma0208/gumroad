@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.middleware";
 import { asyncHandler } from "../../utils/async-handler";
-import { download, getProduct, list, listFiles } from "./library.controller";
+import { download, getProduct, ids, list, listFiles } from "./library.controller";
 
 export const libraryRouter = Router();
 
 libraryRouter.get("/", requireAuth, asyncHandler(list));
+libraryRouter.get("/ids", requireAuth, asyncHandler(ids));
 libraryRouter.get(
   "/products/:productId/download",
   requireAuth,

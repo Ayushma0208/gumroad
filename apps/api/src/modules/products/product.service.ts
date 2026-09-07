@@ -33,12 +33,6 @@ const productInclude = {
   },
 } satisfies Prisma.ProductInclude;
 
-function normalizeSort(sort?: string) {
-  if (sort === "price-asc") return "price_asc";
-  if (sort === "price-desc") return "price_desc";
-  return sort ?? "popular";
-}
-
 export async function uniqueProductSlug(base: string, excludeId?: string) {
   const root = slugify(base);
   let candidate = root;
@@ -80,6 +74,27 @@ export async function assertCanManage(
   await assertProductOwnership(userId, role, product);
 }
 
+function normalizeSort(sort?: string) {
+  if (sort === "price-asc") return "price_asc";
+  if (sort === "price-desc") return "price_desc";
+  if (sort === "relevance") return "popular";
+  return sort ?? "popular";
+}
+
+function publicSearchOr(search: string): Prisma.ProductWhereInput[] {
+  return [
+    { title: { contains: search, mode: "insensitive" } },
+    { slug: { contains: search, mode: "insensitive" } },
+    { shortDescription: { contains: search, mode: "insensitive" } },
+    { description: { contains: search, mode: "insensitive" } },
+    { creator: { storeName: { contains: search, mode: "insensitive" } } },
+    { creator: { displayName: { contains: search, mode: "insensitive" } } },
+    { creator: { slug: { contains: search, mode: "insensitive" } } },
+    { category: { label: { contains: search, mode: "insensitive" } } },
+    { category: { slug: { contains: search, mode: "insensitive" } } },
+  ];
+}
+
 function publicWhere(filters: ListProductsQuery): Prisma.ProductWhereInput {
   const search = (filters.search ?? filters.q)?.trim();
   return {
@@ -96,15 +111,7 @@ function publicWhere(filters: ListProductsQuery): Prisma.ProductWhereInput {
           },
         }
       : {}),
-    ...(search
-      ? {
-          OR: [
-            { title: { contains: search, mode: "insensitive" } },
-            { shortDescription: { contains: search, mode: "insensitive" } },
-            { description: { contains: search, mode: "insensitive" } },
-          ],
-        }
-      : {}),
+    ...(search ? { OR: publicSearchOr(search) } : {}),
   };
 }
 
@@ -114,6 +121,12 @@ function orderBy(sort: string): Prisma.ProductOrderByWithRelationInput[] {
       return [{ createdAt: "desc" }];
     case "featured":
       return [{ featured: "desc" }, { createdAt: "desc" }];
+    case "trending":
+      return [
+        { trending: "desc" },
+        { orderItems: { _count: "desc" } },
+        { createdAt: "desc" },
+      ];
     case "price_asc":
       return [{ price: "asc" }];
     case "price_desc":
@@ -125,35 +138,43 @@ function orderBy(sort: string): Prisma.ProductOrderByWithRelationInput[] {
   }
 }
 
+async function productIdsMeetingMinRating(minRating: number, where: Prisma.ProductWhereInput) {
+  const products = await prisma.product.findMany({
+    where,
+    select: {
+      id: true,
+      reviews: {
+        where: { status: "PUBLISHED" },
+        select: { rating: true },
+      },
+    },
+    take: 400,
+  });
+  return products
+    .filter((product) => {
+      if (product.reviews.length === 0) return false;
+      const avg =
+        product.reviews.reduce((sum, review) => sum + review.rating, 0) /
+        product.reviews.length;
+      return avg >= minRating;
+    })
+    .map((product) => product.id);
+}
+
 export async function listPublishedProducts(filters: ListProductsQuery) {
   const pagination = parsePagination(filters.page, filters.limit);
   const sort = normalizeSort(filters.sort);
-  const where = publicWhere(filters);
+  let where = publicWhere(filters);
 
   if (filters.minRating && filters.minRating > 0) {
-    const candidates = await prisma.product.findMany({
-      where,
-      include: productInclude,
-      orderBy: orderBy(sort),
-      take: 200,
-    });
-    const ranked = candidates.filter((product) => {
-      const ratings = product.reviews.map((review) => review.rating);
-      const rating =
-        ratings.length === 0
-          ? 0
-          : ratings.reduce((sum, value) => sum + value, 0) / ratings.length;
-      return rating >= (filters.minRating ?? 0);
-    });
-    const total = ranked.length;
-    const slice = ranked.slice(
-      (pagination.page - 1) * pagination.limit,
-      pagination.page * pagination.limit,
-    );
-    return {
-      items: slice.map((product) => serializeProduct(product)),
-      pagination: paginationMeta(pagination.page, pagination.limit, total),
-    };
+    const ids = await productIdsMeetingMinRating(filters.minRating, where);
+    where = { ...where, id: { in: ids } };
+    if (ids.length === 0) {
+      return {
+        items: [],
+        pagination: paginationMeta(pagination.page, pagination.limit, 0),
+      };
+    }
   }
 
   const [total, products] = await prisma.$transaction([
@@ -211,14 +232,34 @@ function trendingScore(product: {
 
 export async function listTrendingProducts(page?: number, limit?: number) {
   const pagination = parsePagination(page, limit ?? 8);
-  const candidates = await prisma.product.findMany({
-    where: { status: "PUBLISHED" },
+  // Prefer curator-flagged trending, then paid sales velocity among published products.
+  const flagged = await prisma.product.findMany({
+    where: { status: "PUBLISHED", trending: true },
     include: productInclude,
-    take: 80,
+    orderBy: [{ orderItems: { _count: "desc" } }, { createdAt: "desc" }],
+    take: 40,
   });
-  const ranked = [...candidates].sort(
-    (a, b) => trendingScore(b) - trendingScore(a),
-  );
+  const need = Math.max(40, pagination.page * pagination.limit);
+  let ranked = flagged;
+  if (ranked.length < need) {
+    const extra = await prisma.product.findMany({
+      where: {
+        status: "PUBLISHED",
+        ...(flagged.length
+          ? { id: { notIn: flagged.map((product) => product.id) } }
+          : {}),
+      },
+      include: productInclude,
+      orderBy: [{ orderItems: { _count: "desc" } }, { createdAt: "desc" }],
+      take: 80 - flagged.length,
+    });
+    ranked = [
+      ...flagged,
+      ...[...extra].sort((a, b) => trendingScore(b) - trendingScore(a)),
+    ];
+  } else {
+    ranked = [...flagged].sort((a, b) => trendingScore(b) - trendingScore(a));
+  }
   const total = ranked.length;
   const slice = ranked.slice(
     (pagination.page - 1) * pagination.limit,

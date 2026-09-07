@@ -1,10 +1,13 @@
-import { Star } from "lucide-react";
+"use client";
+
+import { BookOpen, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { CreatorAvatar } from "@/components/creator/creator-avatar";
 import { ProductCardCartButton } from "@/components/product/product-card-cart-button";
 import { WishlistButton } from "@/components/wishlist/wishlist-button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOwnsProduct } from "@/hooks/use-library";
 import { formatCompactNumber, formatPrice } from "@/lib/format";
 import { creatorPath, productPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
@@ -74,6 +77,26 @@ function RatingMeta({
   );
 }
 
+function CardBadges({ product }: { product: Product }) {
+  const badges: string[] = [];
+  if (product.editorsPick) badges.push("Editor’s pick");
+  else if (product.featured) badges.push("Featured");
+  if (product.trending) badges.push("Trending");
+  if (badges.length === 0) return null;
+  return (
+    <span className="absolute bottom-3 left-3 z-10 flex flex-wrap gap-1.5">
+      {badges.slice(0, 2).map((badge) => (
+        <span
+          key={badge}
+          className="rounded-full bg-background/92 px-2 py-0.5 text-[10px] font-medium tracking-wide text-foreground"
+        >
+          {badge}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export function ProductCard({
   product,
   className,
@@ -85,6 +108,7 @@ export function ProductCard({
   priority?: boolean;
   layout?: ProductCardLayout;
 }) {
+  const owned = useOwnsProduct(product.id);
   if (layout === "featured") {
     return (
       <article className={cn("group h-full motion-safe:transition-transform motion-safe:duration-300 motion-safe:hover:-translate-y-0.5", className)}>
@@ -190,15 +214,30 @@ export function ProductCard({
           <span className="absolute top-3 left-3 rounded-full bg-background/92 px-2.5 py-1 text-[11px] font-medium tracking-wide text-foreground">
             {product.categoryLabel}
           </span>
+          <CardBadges product={product} />
           <span className="absolute right-3 bottom-3 font-mono text-sm text-white">
             {formatPrice(product.priceCents, product.currency)}
           </span>
           <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-            <WishlistButton productId={product.id} />
-            <ProductCardCartButton
-              product={product}
-              className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-            />
+            {owned ? (
+              <Link
+                href={`/library/${product.id}`}
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-background/90 px-3 text-xs font-medium text-foreground shadow-sm backdrop-blur-md"
+                aria-label="Open in library"
+              >
+                <BookOpen className="size-3.5" />
+                Owned
+              </Link>
+            ) : (
+              <>
+                <WishlistButton productId={product.id} />
+                <ProductCardCartButton
+                  product={product}
+                  className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+                />
+              </>
+            )}
           </div>
         </Link>
         <div className="flex flex-1 flex-col pt-4">

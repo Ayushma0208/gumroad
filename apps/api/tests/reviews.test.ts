@@ -68,9 +68,16 @@ vi.mock("../src/config/database", () => ({
     },
     creatorProfile: { findUnique: creatorFindUnique },
     user: { findUnique: userFindUnique },
+    adminAuditLog: { create: vi.fn().mockResolvedValue({ id: "audit_1" }) },
     $transaction: transaction,
     $connect: vi.fn(),
   },
+}));
+
+vi.mock("../src/modules/notifications/notification.events", () => ({
+  notifyOrderPaid: vi.fn().mockResolvedValue(undefined),
+  notifyReviewCreated: vi.fn().mockResolvedValue(undefined),
+  notifyProductStatusChange: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { createApp } from "../src/app";
@@ -84,7 +91,7 @@ function session(user: { id: string; email: string; role: Role }) {
     process.env.JWT_SECRET as string,
     { expiresIn: "1d" },
   );
-  userFindUnique.mockResolvedValue(user);
+  userFindUnique.mockResolvedValue({ ...user, status: "ACTIVE" });
   return [`${cookieName()}=${token}`];
 }
 

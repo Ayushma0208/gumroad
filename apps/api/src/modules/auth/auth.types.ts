@@ -1,10 +1,11 @@
-import type { CreatorProfile, Role } from "@prisma/client";
+import type { CreatorProfile, Role, UserStatus } from "@prisma/client";
 
 export type PublicUser = {
   id: string;
   name: string;
   email: string;
   role: Role;
+  status: UserStatus;
   avatarUrl: string | null;
   creatorProfile: {
     displayName: string;
@@ -22,6 +23,7 @@ export function toPublicUser(
     name: string;
     email: string;
     role: Role;
+    status: UserStatus;
     avatarUrl: string | null;
     creatorProfile: CreatorProfile | null;
   },
@@ -31,6 +33,7 @@ export function toPublicUser(
     name: user.name,
     email: user.email,
     role: user.role,
+    status: user.status,
     avatarUrl: user.avatarUrl,
     creatorProfile: user.creatorProfile
       ? {

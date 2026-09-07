@@ -5,6 +5,7 @@ import {
   getLibraryFiles,
   getLibraryProduct,
   listLibrary,
+  listLibraryProductIds,
   requestLibraryDownload,
 } from "./library.service";
 
@@ -20,6 +21,12 @@ export async function list(req: Request, res: Response) {
     req.query.page ? Number(req.query.page) : undefined,
     req.query.limit ? Number(req.query.limit) : undefined,
   );
+  res.json(success(result));
+}
+
+export async function ids(req: Request, res: Response) {
+  const user = actor(req);
+  const result = await listLibraryProductIds(user.id);
   res.json(success(result));
 }
 

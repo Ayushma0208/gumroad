@@ -26,6 +26,15 @@ function publicFile(file: {
   };
 }
 
+export async function listLibraryProductIds(userId: string) {
+  const purchases = await prisma.purchase.findMany({
+    where: { userId, order: { status: "PAID" } },
+    select: { productId: true },
+    distinct: ["productId"],
+  });
+  return { productIds: purchases.map((row) => row.productId) };
+}
+
 export async function listLibrary(userId: string, page?: number, limit?: number) {
   const pagination = parsePagination(page, limit);
   const where = { userId, order: { status: "PAID" as const } };

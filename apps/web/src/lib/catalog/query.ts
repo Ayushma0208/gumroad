@@ -1,8 +1,11 @@
 import type { Product, ProductType } from "@/types/catalog";
 
 export const SORT_OPTIONS = [
+  { value: "relevance", label: "Relevance" },
   { value: "popular", label: "Most Popular" },
+  { value: "trending", label: "Trending" },
   { value: "newest", label: "Newest" },
+  { value: "rating", label: "Most reviewed" },
   { value: "price-asc", label: "Price: Low to High" },
   { value: "price-desc", label: "Price: High to Low" },
 ] as const;
@@ -10,34 +13,33 @@ export const SORT_OPTIONS = [
 export type SortKey = (typeof SORT_OPTIONS)[number]["value"];
 
 export const PRICE_FILTERS = [
-  { value: "under-30", label: "Under $30" },
-  { value: "30-70", label: "$30 – $70" },
-  { value: "70-plus", label: "$70 and up" },
+  { value: "under-30", label: "Under 30" },
+  { value: "30-70", label: "30 – 70" },
+  { value: "70-plus", label: "70 and up" },
 ] as const;
 
 export type PriceFilter = (typeof PRICE_FILTERS)[number]["value"];
 
 export const RATING_FILTERS = [
-  { value: "4.5", label: "4.5 and up" },
-  { value: "4.8", label: "4.8 and up" },
+  { value: "4.5", label: "4.5★ and up" },
+  { value: "4", label: "4★ and up" },
 ] as const;
 
 export type RatingFilter = (typeof RATING_FILTERS)[number]["value"];
 
 export const PRODUCT_TYPE_FILTERS = [
-  { value: "kit", label: "Kits & systems" },
+  { value: "kit", label: "Digital downloads" },
   { value: "course", label: "Courses" },
-  { value: "pack", label: "Packs & presets" },
+  { value: "pack", label: "Bundles" },
   { value: "template", label: "Templates" },
-  { value: "ebook", label: "Ebooks & guides" },
 ] as const;
 
 export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
-  kit: "Kit",
+  kit: "Download",
   course: "Course",
-  pack: "Pack",
+  pack: "Bundle",
   template: "Template",
-  ebook: "Ebook",
+  ebook: "Download",
 };
 
 export type CatalogFilters = {
@@ -59,14 +61,6 @@ export const DEFAULT_CATALOG_FILTERS: CatalogFilters = {
   type: null,
   page: 1,
 };
-
-export const SEARCH_SUGGESTIONS = [
-  "Prompt engineering",
-  "UI kit",
-  "Lightroom",
-  "Notion",
-  "React",
-] as const;
 
 function isSortKey(value: string | null): value is SortKey {
   return SORT_OPTIONS.some((option) => option.value === value);
@@ -97,7 +91,11 @@ export function parseCatalogFilters(
   return {
     q: search,
     category: params.get("category")?.trim() || null,
-    sort: isSortKey(sortParam) ? sortParam : "popular",
+    sort: isSortKey(sortParam)
+      ? sortParam
+      : search
+        ? "relevance"
+        : "popular",
     price: isPriceFilter(priceParam) ? priceParam : null,
     rating: isRatingFilter(ratingParam) ? ratingParam : null,
     type: isProductType(typeParam) ? typeParam : null,
@@ -108,9 +106,10 @@ export function parseCatalogFilters(
 export function catalogFiltersToQueryString(filters: CatalogFilters): string {
   const params = new URLSearchParams();
   const query = filters.q.trim();
-  if (query) params.set("search", query);
+  if (query) params.set("q", query);
   if (filters.category) params.set("category", filters.category);
-  if (filters.sort !== "popular") params.set("sort", filters.sort);
+  const defaultSort = query ? "relevance" : "popular";
+  if (filters.sort !== defaultSort) params.set("sort", filters.sort);
   if (filters.price) params.set("price", filters.price);
   if (filters.rating) params.set("rating", filters.rating);
   if (filters.type) params.set("type", filters.type);
@@ -162,7 +161,7 @@ export function queryCatalog(
     if (filters.type && product.productType !== filters.type) return false;
     if (filters.price && !matchesPrice(product, filters.price)) return false;
     if (filters.rating === "4.5" && product.rating < 4.5) return false;
-    if (filters.rating === "4.8" && product.rating < 4.8) return false;
+    if (filters.rating === "4" && product.rating < 4) return false;
     return true;
   });
 
@@ -179,6 +178,22 @@ export function queryCatalog(
       break;
     case "price-desc":
       sorted.sort((a, b) => b.priceCents - a.priceCents);
+      break;
+    case "trending":
+      sorted.sort(
+        (a, b) =>
+          Number(Boolean(b.trending)) - Number(Boolean(a.trending)) ||
+          b.salesCount - a.salesCount,
+      );
+      break;
+    case "rating":
+      sorted.sort(
+        (a, b) => b.reviewCount - a.reviewCount || b.rating - a.rating,
+      );
+      break;
+    case "relevance":
+      // Client mock path only — remote search uses server ranking.
+      sorted.sort((a, b) => b.salesCount - a.salesCount);
       break;
     default:
       sorted.sort((a, b) => b.salesCount - a.salesCount);
