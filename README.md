@@ -46,7 +46,7 @@ pnpm --filter @lumen/web build
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [API overview](docs/API.md)
-- [Deployment](docs/DEPLOYMENT.md)
+- [Deployment](docs/DEPLOYMENT.md) (includes [Render](docs/DEPLOYMENT.md#render-recommended))
 - [Security](docs/SECURITY.md)
 - [Performance](docs/PERFORMANCE.md)
 - API domain docs under `apps/api/docs/`

@@ -9,8 +9,8 @@ import { logEvent } from "./utils/logger";
 
 const app = createApp();
 
-const server = app.listen(env.PORT, () => {
-  console.log(`Lumen API listening on http://localhost:${env.PORT}`);
+const server = app.listen(env.PORT, "0.0.0.0", () => {
+  console.log(`Lumen API listening on http://0.0.0.0:${env.PORT}`);
   if (env.NODE_ENV !== "test") {
     startEmailWorker(env.EMAIL_WORKER_INTERVAL_MS);
   }

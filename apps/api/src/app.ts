@@ -37,6 +37,10 @@ export function createApp() {
   const production = env.NODE_ENV === "production";
 
   app.disable("x-powered-by");
+  // Render (and other reverse proxies) terminate TLS and set X-Forwarded-*.
+  if (production) {
+    app.set("trust proxy", 1);
+  }
   app.use(
     helmet({
       contentSecurityPolicy: false,
