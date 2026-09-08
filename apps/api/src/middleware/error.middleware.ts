@@ -4,6 +4,16 @@ import { ZodError } from "zod";
 import { env } from "../config/env";
 import { AppError } from "../utils/app-error";
 
+function isPayloadTooLarge(err: unknown) {
+  if (!err || typeof err !== "object") return false;
+  const error = err as { type?: string; status?: number; statusCode?: number };
+  return (
+    error.type === "entity.too.large" ||
+    error.status === 413 ||
+    error.statusCode === 413
+  );
+}
+
 export const errorMiddleware: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof ZodError) {
     res.status(400).json({
@@ -30,6 +40,14 @@ export const errorMiddleware: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(409).json({
       success: false,
       message: "A record with that value already exists.",
+    });
+    return;
+  }
+
+  if (isPayloadTooLarge(err)) {
+    res.status(413).json({
+      success: false,
+      message: "This request is too large. Upload images separately, or use a smaller file.",
     });
     return;
   }

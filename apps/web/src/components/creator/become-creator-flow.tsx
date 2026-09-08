@@ -3,11 +3,12 @@
 import { ArrowRight, Check, LoaderCircle, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { UserAvatar } from "@/components/auth/user-avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FadeInOnLoad } from "@/components/motion/fade-in";
+import { useUploadAvatar } from "@/hooks/use-account";
 import { useBecomeCreatorMutation, useStoreSlugAvailability } from "@/hooks/use-auth";
 import { useCatalogCategories } from "@/hooks/use-catalog";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -28,15 +29,20 @@ const steps = ["Welcome", "Profile", "Store", "Ready"] as const;
 export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
   const router = useRouter();
   const become = useBecomeCreatorMutation();
+  const uploadAvatar = useUploadAvatar();
   const showToast = useToastStore((state) => state.show);
   const categoriesQuery = useCatalogCategories();
   const categories = categoriesQuery.data ?? [];
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [openingStore, setOpeningStore] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<keyof BecomeCreatorValues, string>>
   >({});
   const [slugTouched, setSlugTouched] = useState(false);
+  const localPreviewRef = useRef<string | null>(null);
   const [values, setValues] = useState<BecomeCreatorValues>({
     displayName: user.name,
     storeName: "",
@@ -64,6 +70,15 @@ export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
   const slugPending =
     step === 2 && (slugQuery.isFetching || debouncedSlug !== values.slug);
   const slugTaken = step === 2 && slugQuery.data && !slugQuery.data.available;
+  const busy = openingStore || become.isPending || avatarUploading;
+
+  useEffect(() => {
+    return () => {
+      if (localPreviewRef.current) {
+        URL.revokeObjectURL(localPreviewRef.current);
+      }
+    };
+  }, []);
 
   if (isCreatorRole(user.role) && step !== 3) {
     return (
@@ -89,13 +104,39 @@ export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
 
   function onPickFile(file: File | undefined) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        update("avatarUrl", reader.result);
+    void (async () => {
+      setAvatarError(null);
+      setError(null);
+      if (localPreviewRef.current) {
+        URL.revokeObjectURL(localPreviewRef.current);
+        localPreviewRef.current = null;
       }
-    };
-    reader.readAsDataURL(file);
+      const preview = URL.createObjectURL(file);
+      localPreviewRef.current = preview;
+      update("avatarUrl", preview);
+      setAvatarUploading(true);
+      try {
+        const uploaded = await uploadAvatar.mutateAsync(file);
+        if (uploaded.avatarUrl) {
+          update("avatarUrl", uploaded.avatarUrl);
+        }
+      } catch (uploadError) {
+        update("avatarUrl", user.avatarUrl ?? "");
+        setAvatarError(
+          uploadError instanceof ApiError
+            ? uploadError.message
+            : "Couldn’t upload that photo. Try a smaller JPG or PNG.",
+        );
+      } finally {
+        setAvatarUploading(false);
+        window.setTimeout(() => {
+          URL.revokeObjectURL(preview);
+          if (localPreviewRef.current === preview) {
+            localPreviewRef.current = null;
+          }
+        }, 400);
+      }
+    })();
   }
 
   async function onContinue() {
@@ -128,10 +169,16 @@ export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
         setError("That store URL is taken. Try another.");
         return;
       }
+      if (avatarUploading) {
+        setError("Wait for the photo to finish uploading.");
+        return;
+      }
       try {
+        setOpeningStore(true);
+        const avatarUrl = publicHttpUrl(values.avatarUrl);
         await become.mutateAsync({
           ...values,
-          avatarUrl: values.avatarUrl || undefined,
+          avatarUrl,
         });
         showToast({
           title: "Your store is live",
@@ -145,6 +192,8 @@ export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
             ? err.message
             : "We couldn’t open your store. Try again.",
         );
+      } finally {
+        setOpeningStore(false);
       }
     }
   }
@@ -308,16 +357,42 @@ export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Profile image</p>
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border px-4 py-3 text-sm hover:border-foreground/30">
-                  <Upload className="size-4" />
-                  {values.avatarUrl ? "Replace image" : "Upload a square photo"}
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 text-sm transition-colors",
+                    avatarError
+                      ? "border-destructive/40 hover:border-destructive/60"
+                      : "border-border hover:border-foreground/30",
+                    avatarUploading ? "pointer-events-none opacity-70" : null,
+                  )}
+                >
+                  {avatarUploading ? (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  ) : (
+                    <Upload className="size-4" />
+                  )}
+                  {avatarUploading
+                    ? "Uploading photo…"
+                    : publicHttpUrl(values.avatarUrl) || values.avatarUrl
+                      ? "Replace image"
+                      : "Upload a square photo"}
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     className="sr-only"
-                    onChange={(event) => onPickFile(event.target.files?.[0])}
+                    disabled={avatarUploading}
+                    onChange={(event) => {
+                      void onPickFile(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
                   />
                 </label>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG, WebP, or GIF. The photo is stored on Cloudinary, then attached to your store.
+                </p>
+                {avatarError ? (
+                  <p className="text-sm text-destructive">{avatarError}</p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -366,11 +441,11 @@ export function BecomeCreatorFlow({ user }: { user: AuthUser }) {
             size="xl"
             className="rounded-xl"
             onClick={() => void onContinue()}
-            disabled={become.isPending || Boolean(slugTaken) || slugPending}
+            disabled={busy || Boolean(slugTaken) || slugPending}
           >
-            {become.isPending ? <LoaderCircle className="animate-spin" /> : null}
+            {busy ? <LoaderCircle className="animate-spin" /> : null}
             {step === 0 ? "Continue" : step === 2 ? "Open my store" : "Continue"}
-            {become.isPending ? null : <ArrowRight />}
+            {busy ? null : <ArrowRight />}
           </Button>
         </div>
       ) : null}
@@ -436,6 +511,12 @@ function ReadyStep({
       </Link>
     </div>
   );
+}
+
+function publicHttpUrl(value?: string) {
+  const trimmed = value?.trim() ?? "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return undefined;
 }
 
 function issuesToFields(

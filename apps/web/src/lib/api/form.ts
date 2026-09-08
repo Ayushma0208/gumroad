@@ -11,6 +11,9 @@ export async function requestForm<T>(path: string, formData: FormData): Promise<
   const response = await fetch(apiUrl(path), {
     method: "POST",
     credentials: "include",
+    headers: {
+      "X-Lumen-Client": "web",
+    },
     body: formData,
   });
   const payload: Envelope<T> | null = await response.json().catch(() => null);

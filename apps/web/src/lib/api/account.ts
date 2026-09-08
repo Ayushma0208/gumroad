@@ -1,6 +1,6 @@
-import { apiUrl, requestJson } from "@/lib/api/http";
+import { requestForm } from "@/lib/api/form";
+import { requestJson } from "@/lib/api/http";
 import type { AuthUser } from "@/types/auth";
-import { ApiError } from "@/lib/api/client";
 
 export async function updateProfile(input: { name: string }) {
   const data = await requestJson<{ user: AuthUser }>("/api/v1/users/me", {
@@ -13,24 +13,7 @@ export async function updateProfile(input: { name: string }) {
 export async function uploadUserAvatar(file: File) {
   const body = new FormData();
   body.append("file", file);
-  const response = await fetch(apiUrl("/api/v1/users/me/avatar"), {
-    method: "POST",
-    credentials: "include",
-    body,
-  });
-  const payload = (await response.json().catch(() => null)) as {
-    success?: boolean;
-    data?: { avatarUrl: string | null };
-    message?: string;
-    error?: string;
-  } | null;
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      payload?.message || payload?.error || "Avatar upload failed.",
-    );
-  }
-  return payload?.data ?? { avatarUrl: null };
+  return requestForm<{ avatarUrl: string | null }>("/api/v1/users/me/avatar", body);
 }
 
 export async function deleteUserAvatar() {

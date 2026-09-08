@@ -55,12 +55,21 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   }
 }
 
+function publicHttpUrl(value?: string) {
+  const trimmed = value?.trim() ?? "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return undefined;
+}
+
 export async function becomeCreatorAccount(
   input: BecomeCreatorValues,
 ): Promise<AuthUser> {
   const data = await requestJson<UserPayload>(authPath("/auth/become-creator"), {
     method: "POST",
-    body: input,
+    body: {
+      ...input,
+      avatarUrl: publicHttpUrl(input.avatarUrl),
+    },
   });
   return data.user;
 }

@@ -23,7 +23,7 @@ export type AuthUser = {
 export function homeForRole(role: UserRole): string {
   if (role === "ADMIN") return "/admin";
   if (role === "CREATOR") return "/dashboard";
-  return "/library";
+  return "/discover";
 }
 
 export function isCreatorRole(role: UserRole): boolean {

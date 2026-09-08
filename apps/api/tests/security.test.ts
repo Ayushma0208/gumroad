@@ -206,6 +206,15 @@ describe("security regression", () => {
     delete process.env.ENFORCE_CSRF;
   });
 
+  it("returns 413 for oversized JSON bodies", async () => {
+    const response = await request(app)
+      .post("/api/v1/auth/login")
+      .set("Content-Type", "application/json")
+      .send({ email: "x@example.com", password: "p".repeat(1_200_000) });
+    expect(response.status).toBe(413);
+    expect(response.body.message).toMatch(/too large/i);
+  });
+
   it("does not expose stack traces on 500", async () => {
     userFindUnique.mockImplementation(() => {
       throw new Error("secret db detail");

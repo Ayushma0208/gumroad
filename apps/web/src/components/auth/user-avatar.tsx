@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { cloudinaryThumb } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 import { initialsForName, type AuthUser } from "@/types/auth";
 
@@ -15,6 +16,9 @@ export function UserAvatar({
 }) {
   const dim = size === "lg" ? "size-16" : size === "md" ? "size-10" : "size-8";
   const src = user.avatarUrl || user.creatorProfile?.avatarUrl;
+  const localPreview = Boolean(
+    src && (src.startsWith("data:") || src.startsWith("blob:")),
+  );
 
   return (
     <span
@@ -25,11 +29,17 @@ export function UserAvatar({
       )}
     >
       {src ? (
-        src.startsWith("data:") ? (
+        localPreview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt="" className="size-full object-cover" />
         ) : (
-          <Image src={src} alt="" fill sizes="64px" className="object-cover" />
+          <Image
+            src={cloudinaryThumb(src, 64)}
+            alt=""
+            fill
+            sizes="64px"
+            className="object-cover"
+          />
         )
       ) : (
         initialsForName(user.name)
