@@ -1,46 +1,27 @@
 # Deployment
 
-## Render (recommended)
+## Render (free Web Services)
 
-This repo is a **pnpm monorepo**: Next.js (`apps/web`) + Express (`apps/api`) + PostgreSQL. Do **not** pick **Static Site**. You need two **Web Services** and one **Postgres**.
+This app is a **live Node server** (Next.js SSR + Express API + Postgres). **Static Site will not work** — there is no static HTML export, auth uses httpOnly cookies, and `/api/v1/*` is proxied at runtime.
 
-Repo: `https://github.com/Ayushma0208/gumroad.git` (branch `main`). Connect that GitHub repo in Render before creating services.
+Skip **Blueprint**. Close the payment modal. Use **+ New → Web Service** twice and **+ New → Postgres** once. Pick the **Free** instance type on each screen (do not pick Starter).
 
-`render.yaml` at the repo root is a Blueprint for the whole stack. It must be **committed and pushed** before Blueprint can see it.
+Repo: `https://github.com/Ayushma0208/gumroad.git`, branch `main`. Root directory stays **empty**.
 
-### Option A — Blueprint (fastest)
+Free limits: web services sleep after ~15 minutes idle (first request ~1 minute). Free Postgres is **one per workspace** and **expires after 30 days**. If Render already used your free database slot, use [Neon](https://neon.tech) (free, no card) and paste that URL as `DATABASE_URL`.
 
-From the **+ New** menu:
-
-1. **Blueprint**
-2. Connect the `gumroad` GitHub repo, branch `main`
-3. Apply the Blueprint (`lumen-db`, `lumen-api`, `lumen-web`)
-4. Open **lumen-api → Environment** and paste secrets (Blueprint leaves these blank):
-   - `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`
-   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
-5. Manual **Deploy latest commit** on `lumen-api` after secrets are saved (production boot **requires** those keys)
-6. In Razorpay, set the webhook URL to `https://<lumen-api-host>/api/v1/payments/razorpay/webhook`
-
-Starter web + 256MB Postgres is paid. Free Postgres is not available.
-
-### Option B — click path from + New
-
-Create a **Project** first if you want them grouped (optional): **+ New → Project**.
-
-Then create resources in this order:
-
-#### 1. Postgres — **+ New → Postgres**
+### 1. Postgres — **+ New → Postgres**
 
 | Field | Value |
 |---|---|
 | Name | `lumen-db` |
-| Region | Oregon (same as your other services) |
-| Plan | cheapest paid (256MB / Starter) |
+| Region | Oregon |
+| Instance type | **Free** |
 | Database | `lumen` |
 
-Copy the **Internal Database URL** (or External if Internal is not offered). You will paste it as `DATABASE_URL` on the API.
+Copy the **Internal Database URL** for `DATABASE_URL`.
 
-#### 2. API — **+ New → Web Service**
+### 2. API — **+ New → Web Service** (not Static Site)
 
 Connect `Ayushma0208/gumroad`.
 
@@ -49,36 +30,34 @@ Connect `Ayushma0208/gumroad`.
 | Name | `lumen-api` |
 | Region | Oregon |
 | Runtime | Node |
-| Root directory | *(leave empty — repo root)* |
+| Root directory | *(empty)* |
+| Instance type | **Free** |
 | Build command | `npm install -g pnpm@9.15.0 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @lumen/api build` |
 | Start command | `pnpm --filter @lumen/api prisma:deploy && pnpm --filter @lumen/api start` |
-| Instance | Starter (or Free if you accept spin-down) |
 
-Environment:
+Health check: `/api/v1/health`
 
 | Key | Value |
 |---|---|
 | `NODE_VERSION` | `20` |
 | `NODE_ENV` | `production` |
-| `DATABASE_URL` | from `lumen-db` (link the database, or paste the URL) |
+| `DATABASE_URL` | from `lumen-db` (or a Neon URL) |
 | `JWT_SECRET` | random string, **≥ 32 characters** |
 | `JWT_EXPIRES_IN` | `7d` |
 | `COOKIE_NAME` | `lumen_session` |
 | `COOKIE_SAME_SITE` | `lax` |
-| `CLIENT_URL` | `https://<lumen-web>.onrender.com` *(set after web exists; no trailing slash)* |
+| `CLIENT_URL` | `https://<lumen-web>.onrender.com` *(after web exists; no trailing slash)* |
 | `APP_URL` | same as `CLIENT_URL` |
-| `EMAIL_PROVIDER` | `console` (or `resend` + `EMAIL_API_KEY`) |
-| `EMAIL_FROM` | `Lumen <noreply@yourdomain.com>` |
+| `EMAIL_PROVIDER` | `console` |
+| `EMAIL_FROM` | `Lumen <noreply@example.com>` |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | from Razorpay |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | from Cloudinary |
 
-Health check path: `/api/v1/health`
+You can create the API first and set `CLIENT_URL` after the web service has a URL.
 
-You can deploy the API after Postgres exists, then come back and set `CLIENT_URL` once the web URL is known.
+### 3. Web — **+ New → Web Service** again
 
-#### 3. Web — **+ New → Web Service**
-
-Same repo, same branch, **not** Static Site.
+Same repo. Still **not** Static Site.
 
 | Field | Value |
 |---|---|
@@ -86,47 +65,44 @@ Same repo, same branch, **not** Static Site.
 | Region | Oregon |
 | Runtime | Node |
 | Root directory | *(empty)* |
+| Instance type | **Free** |
 | Build command | `npm install -g pnpm@9.15.0 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @lumen/web build` |
 | Start command | `pnpm --filter @lumen/web start -- --hostname 0.0.0.0` |
-| Instance | Starter (Next.js builds often OOM on 512MB Free) |
 
-Environment (**needed at build time** — set before the first successful web build):
+Set these **before** the first web build (`NEXT_PUBLIC_*` is baked in at build time):
 
 | Key | Value |
 |---|---|
 | `NODE_VERSION` | `20` |
 | `NODE_ENV` | `production` |
-| `NODE_OPTIONS` | `--max-old-space-size=512` |
+| `NODE_OPTIONS` | `--max-old-space-size=384` |
 | `NEXT_PUBLIC_USE_REMOTE_API` | `true` |
 | `API_PROXY_TARGET` | `https://<lumen-api>.onrender.com` *(no trailing slash)* |
 | `NEXT_PUBLIC_API_URL` | same as `API_PROXY_TARGET` |
 | `NEXT_PUBLIC_SITE_URL` | `https://<lumen-web>.onrender.com` |
 
-Do **not** set `ALLOW_MOCK_AUTH`. Production builds reject it.
-
-After the web URL exists, go back to **lumen-api** and set `CLIENT_URL` / `APP_URL` to that origin, then redeploy the API.
+Do **not** set `ALLOW_MOCK_AUTH`. Then put the web URL into the API’s `CLIENT_URL` / `APP_URL` and redeploy the API.
 
 ### After deploy
 
-1. Open `https://<lumen-web>.onrender.com` — first hit on a sleeping instance can take ~1 minute
-2. `https://<lumen-api>.onrender.com/api/v1/health` → ok
-3. `https://<lumen-api>.onrender.com/api/v1/health/ready` → database up
+1. `https://<lumen-web>.onrender.com` — sleeping Free instances take ~1 minute to wake
+2. `https://<lumen-api>.onrender.com/api/v1/health`
+3. `https://<lumen-api>.onrender.com/api/v1/health/ready`
 4. Razorpay webhook: `https://<lumen-api>.onrender.com/api/v1/payments/razorpay/webhook`
-5. Do **not** run `prisma:seed` on production (shared demo password)
-
-The browser talks to the Next.js origin; Next rewrites `/api/v1/*` to the API so auth cookies stay first-party (`SameSite=lax`).
+5. Do **not** run `prisma:seed` on this database
 
 ### Common failures
 
 | Symptom | Fix |
 |---|---|
-| API crash: `Invalid environment: RAZORPAY_*` / `CLOUDINARY_*` | Those keys are required when `NODE_ENV=production` |
-| API crash: `JWT_SECRET must be at least 32 characters` | Use a longer secret |
-| Web build: `Production builds require NEXT_PUBLIC_USE_REMOTE_API=true` | Set that env var, then **Clear build cache & deploy** |
-| Web build killed / OOM | Upgrade instance; keep `NODE_OPTIONS=--max-old-space-size=512` |
-| Login cookie not sticking | `CLIENT_URL` must match the web origin exactly; `COOKIE_SAME_SITE=lax`; no trailing slash |
-| Prisma SSL / P1010 | Use Render’s connection string as-is (`sslmode=require`). If Prisma rejects the cert, append `?sslmode=require` (or `&sslmode=require`) |
+| Payment Information Required on Blueprint | Close it. Create **Web Service** with instance type **Free**. The old Blueprint used paid plans. |
+| API crash: `RAZORPAY_*` / `CLOUDINARY_*` | Required when `NODE_ENV=production` |
+| API crash: `JWT_SECRET must be at least 32 characters` | Longer secret |
+| Web build: `NEXT_PUBLIC_USE_REMOTE_API=true` | Set it, then **Clear build cache & deploy** |
+| Build killed / ran out of memory | Keep `NODE_OPTIONS=--max-old-space-size=384`. If it still dies, the Next.js build needs a paid instance. |
+| Login cookie not sticking | `CLIENT_URL` must match the web origin exactly; no trailing slash |
 | `pnpm: command not found` | Keep `npm install -g pnpm@9.15.0` at the start of the build command |
+| Free Postgres expired / already used | Create a free database on Neon and paste `DATABASE_URL` |
 
 ## Prerequisites
 

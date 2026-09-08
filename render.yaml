@@ -1,13 +1,11 @@
-# Lumen on Render: Postgres + Express API + Next.js web.
-# Apply from the dashboard: New → Blueprint, then connect this GitHub repo.
-#
-# After the first sync, open the API service → Environment and paste
-# Cloudinary + Razorpay secrets (sync: false). The API will not boot without them.
+# Optional. Prefer + New → Web Service (Free) — see docs/DEPLOYMENT.md.
+# Blueprint is not required. This file uses only Render Free compute so it
+# should not prompt for a card. Free Postgres expires after 30 days.
 
 databases:
   - name: lumen-db
     region: oregon
-    plan: basic-256mb
+    plan: free
     databaseName: lumen
     user: lumen
     postgresMajorVersion: "16"
@@ -16,7 +14,7 @@ services:
   - type: web
     name: lumen-api
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     autoDeploy: true
@@ -41,15 +39,9 @@ services:
       - key: COOKIE_SAME_SITE
         value: lax
       - key: CLIENT_URL
-        fromService:
-          type: web
-          name: lumen-web
-          envVarKey: RENDER_EXTERNAL_URL
+        sync: false
       - key: APP_URL
-        fromService:
-          type: web
-          name: lumen-web
-          envVarKey: RENDER_EXTERNAL_URL
+        sync: false
       - key: EMAIL_PROVIDER
         value: console
       - key: EMAIL_FROM
@@ -70,7 +62,7 @@ services:
   - type: web
     name: lumen-web
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     autoDeploy: true
@@ -82,21 +74,12 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_OPTIONS
-        value: --max-old-space-size=512
+        value: --max-old-space-size=384
       - key: NEXT_PUBLIC_USE_REMOTE_API
         value: "true"
       - key: API_PROXY_TARGET
-        fromService:
-          type: web
-          name: lumen-api
-          envVarKey: RENDER_EXTERNAL_URL
+        sync: false
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: lumen-api
-          envVarKey: RENDER_EXTERNAL_URL
+        sync: false
       - key: NEXT_PUBLIC_SITE_URL
-        fromService:
-          type: web
-          name: lumen-web
-          envVarKey: RENDER_EXTERNAL_URL
+        sync: false
