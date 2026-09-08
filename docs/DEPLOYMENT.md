@@ -50,7 +50,8 @@ Health check: `/api/v1/health`
 | `APP_URL` | same as `CLIENT_URL` |
 | `EMAIL_PROVIDER` | `console` |
 | `EMAIL_FROM` | `Lumen <noreply@example.com>` |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | from Razorpay |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | from Razorpay |
+| `RAZORPAY_WEBHOOK_SECRET` | optional — omit to skip webhooks |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | from Cloudinary |
 
 You can create the API first and set `CLIENT_URL` after the web service has a URL.
@@ -121,7 +122,8 @@ See `apps/api/.env.example`. Production **requires**:
 
 - `DATABASE_URL`, `JWT_SECRET` (≥32 chars)
 - `CLIENT_URL` / `APP_URL` (HTTPS)
-- `RAZORPAY_*`, `CLOUDINARY_*`
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `CLOUDINARY_*`
+- `RAZORPAY_WEBHOOK_SECRET` optional (checkout still uses verify)
 - `COOKIE_SAME_SITE=lax` with same-origin proxy (recommended)
 
 ### Web (`apps/web/.env.local` / host env)
@@ -161,9 +163,11 @@ pnpm --filter @lumen/web start
 
 ## Razorpay webhook
 
+Optional. Checkout fulfills via `/payments/razorpay/verify` without it.
+
 - URL: `https://<api-host>/api/v1/payments/razorpay/webhook`
 - Must receive **raw body** (API mounts raw parser before JSON for this path)
-- Configure `RAZORPAY_WEBHOOK_SECRET`
+- Configure `RAZORPAY_WEBHOOK_SECRET` when you enable it
 
 ## Health checks
 

@@ -25,6 +25,7 @@ const envSchema = z.object({
   EMAIL_WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(15000),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  /// Optional. Checkout uses /payments/razorpay/verify. Webhooks stay off until this is set.
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
@@ -54,13 +55,6 @@ const envSchema = z.object({
   }
   if (!value.RAZORPAY_KEY_SECRET) {
     ctx.addIssue({ code: "custom", path: ["RAZORPAY_KEY_SECRET"], message: "Required in production" });
-  }
-  if (!value.RAZORPAY_WEBHOOK_SECRET) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["RAZORPAY_WEBHOOK_SECRET"],
-      message: "Required in production",
-    });
   }
   if (!value.CLOUDINARY_CLOUD_NAME) {
     ctx.addIssue({ code: "custom", path: ["CLOUDINARY_CLOUD_NAME"], message: "Required in production" });
