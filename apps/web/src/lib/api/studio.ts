@@ -199,11 +199,17 @@ export async function saveStudioProduct(input: {
       );
       return mapStudioProduct(data.product);
     }
-    const data = await requestJson<{ product: ApiProduct }>(
+    const created = await requestJson<{ product: ApiProduct }>(
       "/api/v1/products",
-      { method: "POST", body: payload },
+      { method: "POST", body: { ...payload, status: "DRAFT" } },
     );
-    return mapStudioProduct(data.product);
+    const product = mapStudioProduct(created.product);
+    if (input.status !== "published") return product;
+    const published = await requestJson<{ product: ApiProduct }>(
+      `/api/v1/products/${encodeURIComponent(product.id)}/publish`,
+      { method: "POST" },
+    );
+    return mapStudioProduct(published.product);
   } catch (error) {
     if (!allowMockStudioFallback()) throw error;
     if (!isAuthMiss(error) && error instanceof ApiError) throw error;

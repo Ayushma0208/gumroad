@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type FieldPath } from "react-hook-form";
 import { Field, fieldControlClass } from "@/components/studio/field";
 import { CheckoutStyleStep } from "@/components/studio/checkout-style-step";
@@ -126,6 +126,9 @@ export function ProductEditor({
   const showToast = useToastStore((state) => state.show);
   const [step, setStep] = useState(0);
   const [productId, setProductId] = useState(product?.id);
+  const productIdRef = useRef(product?.id);
+  const createLockRef = useRef<Promise<string | undefined> | null>(null);
+  const advancingRef = useRef(false);
   const [galleryImages, setGalleryImages] = useState<ManagedProductImage[]>([]);
   const [managedFiles, setManagedFiles] = useState<ManagedProductFile[]>(
     (product?.files ?? []).map((file) => ({
@@ -226,8 +229,9 @@ export function ProductEditor({
     const next = await save.mutateAsync({
       draft,
       status,
-      productId,
+      productId: productIdRef.current,
     });
+    productIdRef.current = next.id;
     setProductId(next.id);
     form.reset(productToDraft(next));
     showToast({
@@ -242,24 +246,36 @@ export function ProductEditor({
   }
 
   async function ensureDraft() {
-    if (productId) return productId;
+    if (productIdRef.current) return productIdRef.current;
+    if (createLockRef.current) return createLockRef.current;
     const valid = await form.trigger(["title", "shortDescription", "description", "categorySlug"]);
     if (!valid) {
       setStep(1);
       return undefined;
     }
-    const next = await persist("draft", { navigate: false });
-    return next?.id;
+    createLockRef.current = persist("draft", { navigate: false })
+      .then((next) => next?.id ?? productIdRef.current)
+      .finally(() => {
+        createLockRef.current = null;
+      });
+    return createLockRef.current;
   }
 
   async function nextStep() {
-    const fields = stepFields[step];
-    const valid = fields ? await form.trigger(fields) : true;
-    if (!valid) return;
-    if (step === 1) {
-      await ensureDraft();
+    if (advancingRef.current || save.isPending) return;
+    advancingRef.current = true;
+    try {
+      const fields = stepFields[step];
+      const valid = fields ? await form.trigger(fields) : true;
+      if (!valid) return;
+      if (step === 1) {
+        const id = await ensureDraft();
+        if (!id) return;
+      }
+      setStep((current) => Math.min(steps.length - 1, current + 1));
+    } finally {
+      advancingRef.current = false;
     }
-    setStep((current) => Math.min(steps.length - 1, current + 1));
   }
 
   return (
@@ -408,7 +424,14 @@ export function ProductEditor({
           </Button>
           <div className="flex flex-wrap gap-2">
             {step < 8 ? (
-              <Button type="button" size="lg" className="rounded-xl" onClick={() => void nextStep()}>
+              <Button
+                type="button"
+                size="lg"
+                className="rounded-xl"
+                disabled={save.isPending}
+                onClick={() => void nextStep()}
+              >
+                {save.isPending ? <LoaderCircle className="animate-spin" /> : null}
                 Continue
               </Button>
             ) : (
