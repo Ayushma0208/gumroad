@@ -40,6 +40,9 @@ export type StudioProduct = {
   views: number;
   createdAt: string;
   updatedAt: string;
+  pageTemplateId: string;
+  pageStyle: unknown;
+  checkoutStyle: unknown;
 };
 
 export type StudioSale = {
@@ -147,4 +150,7 @@ export type StudioProductDraft = {
   priceCents: number;
   suggestedPriceCents: number;
   minPriceCents: number;
+  pageTemplateId: string;
+  pageStyle: unknown;
+  checkoutStyle: unknown;
 };

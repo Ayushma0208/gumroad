@@ -13,11 +13,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useForm, type FieldPath } from "react-hook-form";
 import { Field, fieldControlClass } from "@/components/studio/field";
+import { CheckoutStyleStep } from "@/components/studio/checkout-style-step";
 import {
   CoverUploader,
   FileUploader,
   GalleryUploader,
 } from "@/components/studio/media-uploader";
+import { ProductPageStep } from "@/components/studio/product-page-step";
 import { ProductStatusBadge } from "@/components/studio/status-badge";
 import { StudioPage } from "@/components/studio/studio-page";
 import { Textarea } from "@/components/studio/textarea";
@@ -38,6 +40,12 @@ import {
 import { formatPrice } from "@/lib/format";
 import { pricingCopy, productKindCopy } from "@/lib/studio/copy";
 import {
+  hasCustomPageStyle,
+  parseCheckoutStyle,
+  parsePageStyle,
+} from "@/lib/studio/page-style";
+import { getPageTemplate } from "@/lib/studio/page-templates";
+import {
   emptyProductDraft,
   productDraftSchema,
   type ProductDraftValues,
@@ -52,6 +60,8 @@ const steps = [
   { id: "images", label: "Images" },
   { id: "files", label: "Files" },
   { id: "pricing", label: "Pricing" },
+  { id: "page", label: "Product page" },
+  { id: "checkout", label: "Checkout" },
   { id: "review", label: "Review" },
   { id: "publish", label: "Publish" },
 ] as const;
@@ -89,6 +99,13 @@ export function productToDraft(product: StudioProduct): ProductDraftValues {
     priceCents: product.priceCents,
     suggestedPriceCents: product.suggestedPriceCents ?? product.priceCents,
     minPriceCents: product.minPriceCents ?? 0,
+    pageTemplateId: hasCustomPageStyle(product.pageStyle)
+      ? (product.pageTemplateId ?? "")
+      : "",
+    pageStyle: hasCustomPageStyle(product.pageStyle)
+      ? parsePageStyle(product.pageStyle)
+      : null,
+    checkoutStyle: parseCheckoutStyle(product.checkoutStyle),
   };
 }
 
@@ -126,6 +143,16 @@ export function ProductEditor({
   });
 
   const dirty = form.formState.isDirty;
+  const pageStyle = parsePageStyle(form.watch("pageStyle"));
+  const checkoutStyle = parseCheckoutStyle(form.watch("checkoutStyle"));
+  const previewProduct = {
+    title: form.watch("title"),
+    shortDescription: form.watch("shortDescription"),
+    coverUrl: form.watch("coverUrl") || galleryImages[0]?.url || "",
+    priceCents: form.watch("priceCents"),
+    currency: form.watch("currency"),
+    pricingModel: form.watch("pricingModel"),
+  };
 
   useEffect(() => {
     if (!productId) return;
@@ -191,6 +218,10 @@ export function ProductEditor({
       })),
       gallery: galleryImages.map((image) => image.url),
       coverUrl: form.getValues("coverUrl") || galleryImages[0]?.url || "",
+      pageStyle: hasCustomPageStyle(form.getValues("pageStyle"))
+        ? parsePageStyle(form.getValues("pageStyle"))
+        : null,
+      checkoutStyle: parseCheckoutStyle(form.getValues("checkoutStyle")),
     };
     const next = await save.mutateAsync({
       draft,
@@ -232,7 +263,7 @@ export function ProductEditor({
   }
 
   return (
-    <StudioPage className="max-w-3xl">
+    <StudioPage className={step === 5 || step === 6 ? "max-w-[1400px]" : "max-w-3xl"}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-medium tracking-[0.18em] text-brand uppercase">
@@ -329,9 +360,40 @@ export function ProductEditor({
         ) : null}
         {step === 4 ? <PricingStep form={form} /> : null}
         {step === 5 ? (
-          <ReviewStep values={form.getValues()} categories={categoryOptions} />
+          <ProductPageStep
+            templateId={form.watch("pageTemplateId")}
+            pageStyle={
+              hasCustomPageStyle(form.watch("pageStyle")) ? pageStyle : null
+            }
+            product={previewProduct}
+            onSelect={(template) => {
+              if (!template) {
+                form.setValue("pageTemplateId", "", { shouldDirty: true });
+                form.setValue("pageStyle", null, { shouldDirty: true });
+                return;
+              }
+              form.setValue("pageTemplateId", template.id, { shouldDirty: true });
+              form.setValue("pageStyle", template.style, { shouldDirty: true });
+            }}
+          />
         ) : null}
         {step === 6 ? (
+          <CheckoutStyleStep
+            style={checkoutStyle}
+            product={previewProduct}
+            onChange={(next) =>
+              form.setValue("checkoutStyle", next, { shouldDirty: true })
+            }
+          />
+        ) : null}
+        {step === 7 ? (
+          <ReviewStep
+            values={form.getValues()}
+            categories={categoryOptions}
+            templateName={form.watch("pageTemplateId")}
+          />
+        ) : null}
+        {step === 8 ? (
           <PublishStep fileCount={managedFiles.length} cover={form.watch("coverUrl")} />
         ) : null}
 
@@ -345,7 +407,7 @@ export function ProductEditor({
             Back
           </Button>
           <div className="flex flex-wrap gap-2">
-            {step < 6 ? (
+            {step < 8 ? (
               <Button type="button" size="lg" className="rounded-xl" onClick={() => void nextStep()}>
                 Continue
               </Button>
@@ -725,9 +787,11 @@ function PricingStep({
 function ReviewStep({
   values,
   categories,
+  templateName,
 }: {
   values: ProductDraftValues;
   categories: { slug: string; label: string }[];
+  templateName: string;
 }) {
   const category = categories.find((item) => item.slug === values.categorySlug);
   const priceLabel = useMemo(() => {
@@ -750,7 +814,10 @@ function ReviewStep({
       )}
       <div className="space-y-4 p-5">
         <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
-          {productKindCopy[values.kind].label} · {category?.label}
+          {productKindCopy[values.kind].label} · {category?.label} ·{" "}
+          {templateName
+            ? getPageTemplate(templateName).name
+            : "Lumen default"}
         </p>
         <h2 className="font-display text-3xl tracking-tight">
           {values.title || "Untitled"}

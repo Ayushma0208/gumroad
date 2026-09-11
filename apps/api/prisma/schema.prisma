@@ -246,6 +246,12 @@ model Product {
   featured          Boolean       @default(false)
   trending          Boolean       @default(false)
   editorsPick       Boolean       @default(false)
+  /// Named product-page preset. Unused until pageStyle is set.
+  pageTemplateId    String        @default("classic")
+  /// Product-page tokens. Null means the original Lumen product page.
+  pageStyle         Json?
+  /// Checkout tokens (layout, fonts, corners, palette). Seller-only for now.
+  checkoutStyle     Json?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 

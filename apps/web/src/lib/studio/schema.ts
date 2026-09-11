@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_CHECKOUT_STYLE } from "@/lib/studio/page-style";
 
 const kindSchema = z.enum(["download", "course", "template", "bundle"]);
 const pricingSchema = z.enum(["free", "fixed", "pwyw"]);
@@ -33,6 +34,9 @@ export const productDraftSchema = z
     priceCents: z.number().int().min(0),
     suggestedPriceCents: z.number().int().min(0),
     minPriceCents: z.number().int().min(0),
+    pageTemplateId: z.string(),
+    pageStyle: z.unknown().nullable(),
+    checkoutStyle: z.unknown(),
   })
   .superRefine((value, ctx) => {
     if (value.pricingModel === "fixed" && value.priceCents < 100) {
@@ -112,4 +116,7 @@ export const emptyProductDraft: ProductDraftValues = {
   priceCents: 2900,
   suggestedPriceCents: 1900,
   minPriceCents: 0,
+  pageTemplateId: "",
+  pageStyle: null,
+  checkoutStyle: DEFAULT_CHECKOUT_STYLE,
 };

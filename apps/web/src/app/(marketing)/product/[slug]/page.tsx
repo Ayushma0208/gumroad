@@ -14,6 +14,10 @@ import {
   ProductPriceNote,
 } from "@/components/product/product-sections";
 import { ProductReviewsSection } from "@/components/product/product-reviews-section";
+import {
+  productHasCustomPage,
+  ThemedProductPage,
+} from "@/components/product/themed-product-page";
 import { getCreatorBySlug, profileFromSummary, toCatalogCreator } from "@/lib/api/creators";
 import {
   getProductBySlug,
@@ -21,6 +25,7 @@ import {
   listRelatedProducts,
 } from "@/lib/api/products";
 import { discoverCategoryPath } from "@/lib/paths";
+import type { CreatorProfile as CatalogCreator, Product, ProductDetail } from "@/types/catalog";
 
 type ProductPageProps = {
   params: Promise<{ slug: string }>;
@@ -63,6 +68,30 @@ export default async function ProductPage({ params }: ProductPageProps) {
       ? toCatalogCreator(creatorPayload)
       : profileFromSummary(product.creator, related.length + 1);
 
+  if (productHasCustomPage(product)) {
+    return (
+      <ThemedProductPage product={product} related={related} creator={creator} />
+    );
+  }
+
+  return (
+    <DefaultLumenProductPage
+      product={product}
+      related={related}
+      creator={creator}
+    />
+  );
+}
+
+function DefaultLumenProductPage({
+  product,
+  related,
+  creator,
+}: {
+  product: ProductDetail;
+  related: Product[];
+  creator: CatalogCreator | null;
+}) {
   return (
     <>
       <Container className="pt-8 pb-28 sm:pt-12 lg:pb-20">

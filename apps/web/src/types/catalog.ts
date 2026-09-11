@@ -31,6 +31,8 @@ export type Product = {
   trending?: boolean;
   editorsPick?: boolean;
   creator: CreatorSummary;
+  pageTemplateId?: string;
+  pageStyle?: unknown;
 };
 
 export type CategoryIcon =

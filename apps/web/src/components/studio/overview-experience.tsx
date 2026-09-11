@@ -112,6 +112,9 @@ export function OverviewExperience() {
       views: 0,
       createdAt: data.range.from,
       updatedAt: data.range.to,
+      pageTemplateId: "classic",
+      pageStyle: null,
+      checkoutStyle: null,
     }),
   );
 

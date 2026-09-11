@@ -1,5 +1,10 @@
 import { Currency, ProductStatus, ProductType } from "@prisma/client";
 import { z } from "zod";
+import {
+  checkoutStyleSchema,
+  pageStyleSchema,
+  pageTemplateIdSchema,
+} from "./page-style.schema";
 
 export const createProductSchema = z.object({
   title: z.string().trim().min(3, "Title is required.").max(120),
@@ -45,6 +50,12 @@ export const createProductSchema = z.object({
     .optional(),
   featured: z.boolean().optional(),
   creatorId: z.string().min(1).optional(),
+  pageTemplateId: z.preprocess(
+    (value) => (value === "" || value == null ? undefined : value),
+    pageTemplateIdSchema.optional(),
+  ),
+  pageStyle: pageStyleSchema.nullable().optional(),
+  checkoutStyle: checkoutStyleSchema.optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

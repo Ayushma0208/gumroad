@@ -97,6 +97,9 @@ function mapStudioProduct(product: ApiProduct & { updatedAt?: string }): StudioP
     views: 0,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt ?? product.createdAt,
+    pageTemplateId: product.pageTemplateId ?? "",
+    pageStyle: product.pageStyle ?? null,
+    checkoutStyle: product.checkoutStyle ?? null,
   };
 }
 
@@ -125,6 +128,9 @@ function productPayload(draft: StudioProductDraft, status: StudioProductStatus) 
         : status === "archived"
           ? "ARCHIVED"
           : "DRAFT",
+    pageTemplateId: draft.pageTemplateId || "classic",
+    pageStyle: draft.pageStyle ?? null,
+    checkoutStyle: draft.checkoutStyle,
   };
 }
 
@@ -235,6 +241,9 @@ export async function duplicateProduct(input: {
         priceCents: existing.priceCents,
         suggestedPriceCents: existing.suggestedPriceCents ?? existing.priceCents,
         minPriceCents: existing.minPriceCents ?? 0,
+        pageTemplateId: existing.pageTemplateId,
+        pageStyle: existing.pageStyle,
+        checkoutStyle: existing.checkoutStyle,
       },
     });
   } catch (error) {

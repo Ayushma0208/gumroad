@@ -4,6 +4,7 @@
  */
 
 import { categories } from "@/lib/mock/catalog";
+import { DEFAULT_CHECKOUT_STYLE } from "@/lib/studio/page-style";
 import type {
   ConversionFunnel,
   DateRangeKey,
@@ -41,8 +42,19 @@ function file(id: string, name: string, sizeBytes: number, mimeType: string): St
   return { id, name, sizeBytes, mimeType };
 }
 
+type SeedProduct = Omit<StudioProduct, "pageTemplateId" | "pageStyle" | "checkoutStyle">;
+
+function withDefaultStyle(product: SeedProduct): StudioProduct {
+  return {
+    ...product,
+    pageTemplateId: "",
+    pageStyle: null,
+    checkoutStyle: { ...DEFAULT_CHECKOUT_STYLE },
+  };
+}
+
 function seedMiraProducts(): StudioProduct[] {
-  return [
+  const products: SeedProduct[] = [
     {
       id: "sp_northline",
       slug: "northline-ui-system",
@@ -209,6 +221,7 @@ function seedMiraProducts(): StudioProduct[] {
       updatedAt: "2026-06-12T12:00:00.000Z",
     },
   ];
+  return products.map(withDefaultStyle);
 }
 
 type Buyer = {
@@ -589,6 +602,9 @@ function fromDraft(
     views: existing?.views ?? 0,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
+    pageTemplateId: draft.pageTemplateId,
+    pageStyle: draft.pageStyle,
+    checkoutStyle: draft.checkoutStyle,
   };
 }
 

@@ -92,6 +92,7 @@ vi.mock("../src/config/database", () => ({
 
 import { createApp } from "../src/app";
 import { cookieName } from "../src/config/cookies";
+import { Prisma } from "@prisma/client";
 
 const app = createApp();
 
@@ -148,6 +149,9 @@ function productRecord(
     featured: true,
     trending: true,
     editorsPick: true,
+    pageTemplateId: "classic",
+    pageStyle: null,
+    checkoutStyle: null,
     createdAt: new Date("2026-01-02"),
     updatedAt: new Date("2026-01-03"),
     category: designCategory,
@@ -373,6 +377,95 @@ describe("products and categories", () => {
     expect(response.body.data.product.slug).toBe("ultimate-figma-ui-kit");
     expect(response.body.data.product.status).toBe("DRAFT");
     expect(productCreate.mock.calls[0]?.[0].data.creatorId).toBe("cr_mira");
+  });
+
+  it("persists page template and checkout style for the creator", async () => {
+    const cookies = session(miraUser);
+    creatorFindUnique.mockResolvedValue(creator());
+    categoryFindUnique.mockResolvedValue(designCategory);
+    productFindUnique.mockResolvedValue(null);
+    const pageStyle = {
+      layout: "classic",
+      headingFont: "serif",
+      bodyFont: "default",
+      theme: "light",
+      corners: "soft",
+      borders: "thin",
+      colors: {
+        background: "#F6EFE6",
+        panel: "#FFF8F0",
+        border: "#E4D5C4",
+        text: "#2A2218",
+        accent: "#1A1A1A",
+        accentText: "#FFFFFF",
+      },
+    };
+    const checkoutStyle = {
+      ...pageStyle,
+      layout: "split",
+      colors: {
+        ...pageStyle.colors,
+        accent: "#635BFF",
+      },
+    };
+    productCreate.mockResolvedValue(
+      productRecord({
+        id: "p_styled",
+        slug: "ultimate-figma-ui-kit",
+        title: createBody.title,
+        status: "DRAFT",
+        pageTemplateId: "warm-cream",
+        pageStyle,
+        checkoutStyle,
+      }),
+    );
+
+    const response = await request(app)
+      .post("/api/v1/products")
+      .set("Cookie", cookies)
+      .send({
+        ...createBody,
+        pageTemplateId: "warm-cream",
+        pageStyle,
+        checkoutStyle,
+      });
+
+    expect(response.status).toBe(201);
+    expect(productCreate.mock.calls[0]?.[0].data.pageTemplateId).toBe(
+      "warm-cream",
+    );
+    expect(productCreate.mock.calls[0]?.[0].data.pageStyle.colors.background).toBe(
+      "#F6EFE6",
+    );
+    expect(response.body.data.product.pageTemplateId).toBe("warm-cream");
+    expect(response.body.data.product.checkoutStyle.layout).toBe("split");
+  });
+
+  it("clears page style so the public page stays the original Lumen layout", async () => {
+    const cookies = session(miraUser);
+    productFindUnique.mockResolvedValue(
+      productRecord({
+        status: "DRAFT",
+        pageTemplateId: "warm-cream",
+        pageStyle: { layout: "classic" },
+      }),
+    );
+    creatorFindUnique.mockResolvedValue(creator());
+    productUpdate.mockResolvedValue(
+      productRecord({
+        status: "DRAFT",
+        pageTemplateId: "classic",
+        pageStyle: null,
+      }),
+    );
+
+    const response = await request(app)
+      .patch("/api/v1/products/p_northline")
+      .set("Cookie", cookies)
+      .send({ pageStyle: null, pageTemplateId: "classic" });
+
+    expect(response.status).toBe(200);
+    expect(productUpdate.mock.calls[0]?.[0].data.pageStyle).toBe(Prisma.DbNull);
   });
 
   it("lets a creator update their own product", async () => {

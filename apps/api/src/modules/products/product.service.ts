@@ -443,6 +443,12 @@ export async function createProduct(
       status,
       coverImage: input.coverImage,
       featured: role === "ADMIN" ? Boolean(input.featured) : false,
+      pageTemplateId: input.pageTemplateId ?? "classic",
+      pageStyle:
+        input.pageStyle === null
+          ? Prisma.DbNull
+          : (input.pageStyle ?? undefined),
+      checkoutStyle: input.checkoutStyle ?? undefined,
       images: input.images
         ? {
             create: input.images.map((image, index) => ({
@@ -547,6 +553,14 @@ export async function updateProduct(
       status: nextStatus,
       coverImage: input.coverImage,
       featured: role === "ADMIN" ? input.featured : undefined,
+      pageTemplateId: input.pageTemplateId,
+      pageStyle:
+        input.pageStyle === undefined
+          ? undefined
+          : input.pageStyle === null
+            ? Prisma.DbNull
+            : input.pageStyle,
+      checkoutStyle: input.checkoutStyle,
       images: input.images
         ? {
             create: input.images.map((image, index) => ({

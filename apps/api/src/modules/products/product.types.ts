@@ -86,7 +86,14 @@ export function serializeProduct(
     editorsPick: product.editorsPick,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
-    ...(options.includeStatus ? { status: product.status } : {}),
+    pageTemplateId: product.pageTemplateId ?? "classic",
+    pageStyle: product.pageStyle ?? null,
+    ...(options.includeStatus
+      ? {
+          status: product.status,
+          checkoutStyle: product.checkoutStyle ?? null,
+        }
+      : {}),
     creator: {
       id: product.creator.id,
       storeName: product.creator.storeName,

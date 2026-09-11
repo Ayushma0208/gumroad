@@ -57,8 +57,11 @@ export type ApiProduct = {
   rating: number;
   reviewCount: number;
   salesCount: number;
-  updatedAt?: string;
+    updatedAt?: string;
   status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  pageTemplateId?: string;
+  pageStyle?: unknown;
+  checkoutStyle?: unknown;
 };
 
 export type PaginatedProducts = {
@@ -136,6 +139,8 @@ export function mapApiProduct(product: ApiProduct): Product {
     featured: product.isFeatured ?? product.featured,
     trending: product.trending,
     editorsPick: product.editorsPick,
+    pageTemplateId: product.pageTemplateId,
+    pageStyle: product.pageStyle,
     creator: {
       id: product.creator.id,
       name: creatorName,
